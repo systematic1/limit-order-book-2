@@ -4,8 +4,9 @@
 
 #include "FillResults.h"
 
-FillResults::FillResults(const long orderId, const int requestQty, const int filledQty, const int remainingQty,
-        const long fillPrice, long auxData, const std::string& message) {
+FillResults::FillResults(const long orderId, const int requestQty, const int filledQty,
+    const int remainingQty, const long fillPrice, long auxData, const std::string& message)
+{
     OrderId = orderId;
     RequestedQuantity = requestQty;
     FilledQuantity = filledQty;

@@ -5,6 +5,7 @@
 #ifndef LIMITORDERBOOK2_PRICELEVEL_H
 #define LIMITORDERBOOK2_PRICELEVEL_H
 
+#include "Enums.h"
 
 struct PriceLevel {
 public:
@@ -26,6 +27,5 @@ public:
     void Clear();
     bool IsEmpty() const;
 };
-
 
 #endif //LIMITORDERBOOK2_PRICELEVEL_H

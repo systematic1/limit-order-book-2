@@ -5,18 +5,19 @@
 #ifndef LIMITORDERBOOK2_ORDER_H
 #define LIMITORDERBOOK2_ORDER_H
 
+#include "Enums.h"
 
 struct Order {
 public:
     long OrderId;
     long Price;
     OrderSide Side;
-    OrderType OrderType;
+    OrderType Type;
     int TotalQuantity;
     int RemainingQuantity;
     int PriceLevelIndex;
     long Timestamp;
-    TimeToLive TimeToLive;
+    TimeToLive TTL;
     long AccountId;
     long SecurityId;
 
@@ -30,6 +31,5 @@ public:
         long accountId, long securityId);
     void Clear();
 };
-
 
 #endif //LIMITORDERBOOK2_ORDER_H

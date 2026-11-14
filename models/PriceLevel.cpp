@@ -4,7 +4,9 @@
 
 #include "PriceLevel.h"
 
-PriceLevel::PriceLevel(long price, long quantity, int orderCount, OrderSide side) {
+PriceLevel::PriceLevel(const long price, const long quantity, const int orderCount,
+    const OrderSide side)
+{
     Price = price;
     QuantityAvailable = quantity;
     OrderCount = orderCount;

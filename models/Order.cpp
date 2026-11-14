@@ -4,18 +4,18 @@
 
 #include "Order.h"
 
-Order::Order(long orderId, long price, OrderSide side, OrderType orderType, int totalQuantity,
-    int remainingQuantity, int priceLevelIndex, long timestamp, TimeToLive timeToLive,
-    long accountId, long securityId)
+Order::Order(const long orderId, const long price, const OrderSide side, OrderType orderType,
+    const int totalQuantity, const int remainingQuantity, const int priceLevelIndex, const long timestamp,
+    TimeToLive timeToLive, const long accountId, const long securityId)
 {
     OrderId = orderId;
     Price = price;
     Side = side;
-    OrderType = orderType;
+    Type = orderType;
     TotalQuantity = totalQuantity;
     RemainingQuantity = remainingQuantity;
     PriceLevelIndex = priceLevelIndex;
-    TimeToLive = timeToLive;
+    TTL = timeToLive;
     AccountId = accountId;
     SecurityId = securityId;
 
@@ -27,11 +27,11 @@ void Order::Clear() {
     OrderId = 0L;
     Price = 0L;
     Side = OrderSide::BUY;
-    OrderType = OrderType::LIMIT;
+    Type = OrderType::LIMIT;
     TotalQuantity = 0L;
     RemainingQuantity = 0L;
     PriceLevelIndex = 0L;
-    TimeToLive = TimeToLive::GTC;
+    TTL = TimeToLive::GTC;
     AccountId = 0L;
     SecurityId = 0L;
 

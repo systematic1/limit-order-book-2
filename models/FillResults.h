@@ -6,7 +6,6 @@
 #define LIMITORDERBOOK2_FILLRESULTS_H
 #include <string>
 
-
 struct FillResults {
 public:
     long OrderId;
@@ -21,6 +20,5 @@ public:
     FillResults(long orderId, int requestQty, int filledQty, int remainingQty,
             long fillPrice, long auxData, const std::string& message);
 };
-
 
 #endif //LIMITORDERBOOK2_FILLRESULTS_H
