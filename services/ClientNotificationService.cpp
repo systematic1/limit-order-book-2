@@ -5,6 +5,7 @@
 #include "ClientNotificationService.h"
 
 void ClientNotificationService::SendNotification(const int accountId, const long orderId,
-    const OrderStatus status, const char* message) {
-
+    const OrderStatus status, const std::string& message)
+{
+    // TO DO...
 }

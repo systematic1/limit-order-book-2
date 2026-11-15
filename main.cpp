@@ -5,129 +5,111 @@
 #include "models/PriceLevel.h"
 #include "models/FillResults.h"
 
-int main() {
-/* C#
-        var cts = new CancellationTokenSource();
-        var instance = new Program();
-        Console.WriteLine("Limit Order Book Processing Engine - Running...");
-        Console.WriteLine();
-        Console.WriteLine("Press Ctrl+C to exit...");
-        Console.WriteLine("===========================================================================");
+int main()
+{
+    // TO DO...
+    // Create test orders...
+}
 
-        Console.CancelKeyPress += (sender, eventArgs) =>
-        {
-            eventArgs.Cancel = true;
-            cts.Cancel();
-        };
+/*int main()
+{
+    std::cout << "Limit Order Book Processing Engine - Running..." << std::endl;
+    std::cout << "Press Ctrl+C to exit..." << std::endl;
+    std::cout << "===========================================================================" << std::endl;
+
+    constexpr std::byte messageDelimiter {'\n'};
+    auto* newOrders = new Order[1024];
+    int lastOrderIndex = -1;
+
+C#
+    while (!ct.IsCancellationRequested)
+    {
+        // Set up a listener from another IPC channel
+        await using var pipeServer = new NamedPipeServerStream(
+            "LOBServerStream",
+            PipeDirection.InOut,
+            1,
+            PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous);
 
         try
         {
-            await instance.Run(cts.Token);
+            await pipeServer.WaitForConnectionAsync(ct);
+            // Create an order from the listener input data buffer
+
+            var reader = PipeReader.Create(pipeServer,
+                new StreamPipeReaderOptions(leaveOpen: true, bufferSize: 256));
+            Console.WriteLine("Created PipeServer.");
+
+            while (!ct.IsCancellationRequested && pipeServer.IsConnected)
+            {
+                Console.WriteLine("Server is receiving data...");
+
+                ReadResult readResult = await reader.ReadAsync(ct);
+                ReadOnlySequence<byte> buffer = readResult.Buffer;
+
+                // If the stream is completed by the client, break out of the loop
+                if (buffer.IsEmpty && readResult.IsCompleted)
+                    break;
+
+                SequencePosition examined = buffer.Start;
+                SequencePosition consumed = buffer.End;
+
+                if (!buffer.IsEmpty)
+                {
+                    try
+                    {
+                        var sequenceReader = new SequenceReader<byte>(buffer);
+                        while (!sequenceReader.End && lastOrderIndex < newOrders.Length)
+                        {
+                            // Read until the message delimiter (or parse up to length if fixed-size)
+                            if (!sequenceReader.TryReadTo(out ReadOnlySequence<byte> messageSequence, messageDelimiter))
+                            {
+                                // Incomplete message; wait for more data
+                                examined = buffer.End;
+                                break;
+                            }
+
+                            // Mark consumption up to this point
+                            consumed = sequenceReader.Position;
+                            examined = consumed;
+
+                            ref Order orderItem = ref newOrders[++lastOrderIndex];
+                            ProcessAndSend(messageSequence, ref orderItem);
+                        }
+                    }
+                    finally
+                    {
+                        reader.AdvanceTo(consumed, examined);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("-- Empty data received.");
+                }
+
+                if (readResult.IsCompleted)
+                    break;
+            }
+
+            if (!pipeServer.IsConnected)
+                pipeServer.Disconnect();
         }
         catch (OperationCanceledException)
         {
-            Console.WriteLine("=======================================================================");
-            Console.WriteLine("Finished processing.");
+            Console.WriteLine("Cancelled operation.");
         }
-*/
-}
-
-static void Run() {
-/* C#
-        const byte messageDelimiter = (byte)'\n';
-        Order[] newOrders = ArrayPool<Order>.Shared.Rent(1024);
-        int lastOrderIndex = -1;
-
-        while (!ct.IsCancellationRequested)
+        catch (Exception e)
         {
-            // Set up a listener from another IPC channel
-            await using var pipeServer = new NamedPipeServerStream(
-                "LOBServerStream",
-                PipeDirection.InOut,
-                1,
-                PipeTransmissionMode.Byte,
-                PipeOptions.Asynchronous);
-
-            try
-            {
-                await pipeServer.WaitForConnectionAsync(ct);
-                // Create an order from the listener input data buffer
-
-                var reader = PipeReader.Create(pipeServer,
-                    new StreamPipeReaderOptions(leaveOpen: true, bufferSize: 256));
-                Console.WriteLine("Created PipeServer.");
-
-                while (!ct.IsCancellationRequested && pipeServer.IsConnected)
-                {
-                    Console.WriteLine("Server is receiving data...");
-
-                    ReadResult readResult = await reader.ReadAsync(ct);
-                    ReadOnlySequence<byte> buffer = readResult.Buffer;
-
-                    // If the stream is completed by the client, break out of the loop
-                    if (buffer.IsEmpty && readResult.IsCompleted)
-                        break;
-
-                    SequencePosition examined = buffer.Start;
-                    SequencePosition consumed = buffer.End;
-
-                    if (!buffer.IsEmpty)
-                    {
-                        try
-                        {
-                            var sequenceReader = new SequenceReader<byte>(buffer);
-                            while (!sequenceReader.End && lastOrderIndex < newOrders.Length)
-                            {
-                                // Read until the message delimiter (or parse up to length if fixed-size)
-                                if (!sequenceReader.TryReadTo(out ReadOnlySequence<byte> messageSequence, messageDelimiter))
-                                {
-                                    // Incomplete message; wait for more data
-                                    examined = buffer.End;
-                                    break;
-                                }
-
-                                // Mark consumption up to this point
-                                consumed = sequenceReader.Position;
-                                examined = consumed;
-
-                                ref Order orderItem = ref newOrders[++lastOrderIndex];
-                                ProcessAndSend(messageSequence, ref orderItem);
-                            }
-                        }
-                        finally
-                        {
-                            reader.AdvanceTo(consumed, examined);
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("-- Empty data received.");
-                    }
-
-                    if (readResult.IsCompleted)
-                        break;
-                }
-
-                if (!pipeServer.IsConnected)
-                    pipeServer.Disconnect();
-            }
-            catch (OperationCanceledException)
-            {
-                Console.WriteLine("Cancelled operation.");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
-                throw;
-            }
-            finally
-            {
-                ArrayPool<Order>.Shared.Return(newOrders);
-            }
-*/
+            Console.WriteLine(e);
+            throw;
+        }
+    }
 }
+*/
 
-static void ProcessAndSend(std::byte* messageSequence, Order& newOrder) {
+void ProcessAndSend(std::byte* messageSequence, Order& newOrder)
+{
 /* C#
         Span<byte> utf8Buffer = stackalloc byte[Math.Max(128, (int)messageSequence.Length)];
 

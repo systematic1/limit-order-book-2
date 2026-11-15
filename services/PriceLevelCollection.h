@@ -15,15 +15,16 @@ private:
     bool* Available;
     int CountInUse;
     int LastIndex;
-    PriceLevel NullPriceLevel = PriceLevel(-1L, -1L, -1L, OrderSide::BUY);
+
+    inline static PriceLevel NullPriceLevel = PriceLevel(-1L, -1L, -1L, OrderSide::BUY);
 
 public:
     PriceLevelCollection(int capacityPowerOf2);
     ~PriceLevelCollection();
 
     int FindLevelIndex(long price) const;
-    PriceLevel& GetPriceLevelByPrice(long price);
-    PriceLevel& GetPriceLevelByIndex(int index);
+    PriceLevel& GetPriceLevelByPrice(long price) const;
+    PriceLevel& GetPriceLevelByIndex(int index) const;
     int GetNextHigherPriceLevel(long price) const;
     int GetNextLowerPriceLevel(long price) const;
     int AddPriceLevel(long price, OrderSide side);

@@ -15,3 +15,8 @@ FillResults::FillResults(const long orderId, const int requestQty, const int fil
     AuxData = auxData;
     Message = message;
 }
+
+bool FillResults::IsNull() const
+{
+    return OrderId == -1L && RequestedQuantity == -1L && RemainingQuantity == -1L && AuxData == LONG_MIN;
+}

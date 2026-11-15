@@ -7,7 +7,8 @@
 
 #include "Enums.h"
 
-struct PriceLevel {
+struct PriceLevel
+{
 public:
     long Price;
     long QuantityAvailable;
@@ -26,6 +27,9 @@ public:
     PriceLevel(long price, long quantity, int orderCount, OrderSide side);
     void Clear();
     bool IsEmpty() const;
+    bool IsNull() const;
 };
+
+const auto NullPriceLevel = PriceLevel(-1L, -1L, -1L, OrderSide::BUY);
 
 #endif //LIMITORDERBOOK2_PRICELEVEL_H

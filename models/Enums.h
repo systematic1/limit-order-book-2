@@ -5,17 +5,20 @@
 #ifndef LIMITORDERBOOK2_ENUMS_H
 #define LIMITORDERBOOK2_ENUMS_H
 
-enum OrderSide {
+enum OrderSide
+{
     BUY,
     SELL
 };
 
-enum OrderType {
+enum OrderType
+{
     LIMIT,
     MARKET
 };
 
-enum OrderStatus {
+enum OrderStatus
+{
     UNKNOWN,
     FILLED,
     PARTIALLY_FILLED,
@@ -26,7 +29,8 @@ enum OrderStatus {
     REJECTED
 };
 
-enum TimeToLive {
+enum TimeToLive
+{
     GTC
 };
 

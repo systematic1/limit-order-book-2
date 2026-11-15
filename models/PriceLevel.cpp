@@ -20,7 +20,8 @@ PriceLevel::PriceLevel(const long price, const long quantity, const int orderCou
     NewestOrderIndex = -1;
 }
 
-void PriceLevel::Clear() {
+void PriceLevel::Clear()
+{
     Price = 0L;
     QuantityAvailable = 0L;
     OrderCount = 0;
@@ -34,6 +35,12 @@ void PriceLevel::Clear() {
     NewestOrderIndex = -1;
 }
 
-bool PriceLevel::IsEmpty() const {
+bool PriceLevel::IsEmpty() const
+{
     return QuantityAvailable == 0L;
+}
+
+bool PriceLevel::IsNull() const
+{
+    return Price < 0L && QuantityAvailable < 0L && OrderCount < 0L && LastFillQuantity < 0L && LastFillTimestamp < 0L;
 }

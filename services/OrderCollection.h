@@ -9,7 +9,8 @@
 #include "../models/PriceLevel.h"
 #include "PriceLevelCollection.h"
 
-class OrderCollection {
+class OrderCollection
+{
 private:
     int Capacity;
     int CapacityMask;

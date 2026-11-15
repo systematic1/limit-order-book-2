@@ -6,7 +6,8 @@
 #define LIMITORDERBOOK2_FILLRESULTS_H
 #include <string>
 
-struct FillResults {
+struct FillResults
+{
 public:
     long OrderId;
     int RequestedQuantity;
@@ -19,6 +20,10 @@ public:
     FillResults() = default;
     FillResults(long orderId, int requestQty, int filledQty, int remainingQty,
             long fillPrice, long auxData, const std::string& message);
+    bool IsNull() const;
 };
+
+const FillResults NullFillResults = FillResults(-1L, -1, -1, -1,
+    -1L, LONG_MIN, std::string());
 
 #endif //LIMITORDERBOOK2_FILLRESULTS_H

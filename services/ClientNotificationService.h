@@ -5,11 +5,14 @@
 #ifndef LIMITORDERBOOK2_CLIENTNOTIFICATIONSERVICE_H
 #define LIMITORDERBOOK2_CLIENTNOTIFICATIONSERVICE_H
 
+#include <string>
+
 #include "../models/Enums.h"
 
-class ClientNotificationService {
+class ClientNotificationService
+{
 public:
-    static void SendNotification(int accountId, long orderId, OrderStatus status, const char* message);
+    static void SendNotification(int accountId, long orderId, OrderStatus status, const std::string& message);
 };
 
 #endif //LIMITORDERBOOK2_CLIENTNOTIFICATIONSERVICE_H
