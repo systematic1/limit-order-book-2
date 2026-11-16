@@ -7,7 +7,7 @@
 
 Order::Order(const long orderId, const long price, const OrderSide side, OrderType orderType,
              const int totalQuantity, const int remainingQuantity, const int priceLevelIndex, const long timestamp,
-             TimeToLive timeToLive, const long accountId, const long securityId)
+             const TimeToLive timeToLive, const long accountId, const long securityId)
 {
     OrderId = orderId;
     Price = price;
@@ -17,6 +17,7 @@ Order::Order(const long orderId, const long price, const OrderSide side, OrderTy
     RemainingQuantity = remainingQuantity;
     PriceLevelIndex = priceLevelIndex;
     TTL = timeToLive;
+    Timestamp = timestamp;
     AccountId = accountId;
     SecurityId = securityId;
 
@@ -34,6 +35,7 @@ void Order::Clear()
     RemainingQuantity = 0L;
     PriceLevelIndex = 0L;
     TTL = TimeToLive::GTC;
+    Timestamp = -1L;
     AccountId = 0L;
     SecurityId = 0L;
 

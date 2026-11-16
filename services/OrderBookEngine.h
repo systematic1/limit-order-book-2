@@ -19,12 +19,14 @@ private:
     PriceLevelCollection BidPriceLevels;
 
 public:
-    OrderBookEngine(int orderCapacity, int priceLevelCapacity);
+    OrderBookEngine();
+    OrderBookEngine(int orderCapacity, int priceLevelCapacity, std::function<void(long, long, OrderStatus, const std::string&)>);
     OrderStatus AddOrder(Order& order);
     OrderStatus CancelOrder(const Order& order);
+    void NotifyOrderFillStatus(const Order& order, OrderStatus status, const FillResults& fillResults) const;
+    std::function<void(long, long, OrderStatus, const std::string&)> NotifyFunction;
 
 private:
-    void NotifyOrderFillStatus(const Order& order, OrderStatus status, const FillResults& fillResults) const;
     OrderStatus ValidateOrder(const Order& order) const;
     bool DoesOrderViolateRisk(const Order& order) const;
     int FillMatchingOrder(PriceLevel& priceLevel, Order& order);

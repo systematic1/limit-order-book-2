@@ -3,15 +3,21 @@
 //
 
 #include "OrderBookEngine.h"
-#include "ClientNotificationService.h"
 #include "../models/Enums.h"
 
 #include <iostream>
 #include <ostream>
 #include <sstream>
+#include <utility>
 
-OrderBookEngine::OrderBookEngine(const int orderCapacity, const int priceLevelCapacity) :
-    Orders(orderCapacity), AskPriceLevels(priceLevelCapacity), BidPriceLevels(priceLevelCapacity)
+OrderBookEngine::OrderBookEngine() : Orders(0), AskPriceLevels(0), BidPriceLevels(0)
+{
+}
+
+OrderBookEngine::OrderBookEngine(const int orderCapacity, const int priceLevelCapacity,
+                                 std::function<void(long, long, OrderStatus, const std::string&)> notifyFunction) :
+    Orders(orderCapacity), AskPriceLevels(priceLevelCapacity), BidPriceLevels(priceLevelCapacity),
+    NotifyFunction(std::move(notifyFunction))
 {
 }
 
@@ -201,7 +207,7 @@ void OrderBookEngine::NotifyOrderFillStatus(const Order& order, OrderStatus stat
     try
     {
         const std::string message = oss.str();
-        ClientNotificationService::SendNotification(99999, order.OrderId, status, message);
+        NotifyFunction(99999, order.OrderId, status, message);
     }
     catch (std::exception& e)
     {

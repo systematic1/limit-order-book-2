@@ -11,11 +11,11 @@ add_executable(LimitOrderBook2 main.cpp
         models/PriceLevel.cpp
         models/PriceLevel.h
         models/Enums.h
-        services/ClientNotificationService.cpp
-        services/ClientNotificationService.h
         services/OrderBookEngine.cpp
         services/OrderBookEngine.h
         services/OrderCollection.cpp
         services/OrderCollection.h
         services/PriceLevelCollection.cpp
-        services/PriceLevelCollection.h)
+        services/PriceLevelCollection.h
+        Program.cpp
+        Program.h)
