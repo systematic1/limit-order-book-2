@@ -25,7 +25,8 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
 {
     PriceLevel priceLevel = NullPriceLevel;
     int levelIndex;
-    int quantityFilled = 1; // Set to 1 so it will enter the while loop the first time
+    int quantityFilled = 0;                                     // ---
+    bool wasFilled = true;                                      // ---
     long price = order.Price;
 
     OrderStatus status = ValidateOrder(order);
@@ -46,7 +47,7 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
         }
 
         // We keep looking for more orders to fill until our order is completed
-        while (order.RemainingQuantity > 0 && quantityFilled > 0)
+        while (order.RemainingQuantity > 0 && wasFilled)                                        // ---
         {
             priceLevel = AskPriceLevels.GetPriceLevelByPrice(price);
             if (priceLevel.IsNull())
@@ -60,6 +61,7 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
 
             // Find a matching order and fill it
             quantityFilled = FillMatchingOrder(priceLevel, order);
+            wasFilled = (quantityFilled > 0);                                                   // ---
         }
     }
     else
@@ -73,7 +75,7 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
         }
 
         // We keep looking for more orders to fill until our order is completed
-        while (order.RemainingQuantity > 0 && quantityFilled > 0)
+        while (order.RemainingQuantity > 0 && wasFilled)                                        // ---
         {
             priceLevel = BidPriceLevels.GetPriceLevelByPrice(price);
             if (priceLevel.IsNull())
@@ -88,6 +90,7 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
 
             // Find a matching order and fill it
             quantityFilled = FillMatchingOrder(priceLevel, order);
+            wasFilled = (quantityFilled > 0);                                                   // ---
         }
     }
 
@@ -348,4 +351,19 @@ bool OrderBookEngine::AddOrderToBook(Order& order)
 bool OrderBookEngine::IsDuplicateOrder(const long orderId) const
 {
     return Orders.FindOrderIndex(orderId) != -1;
+}
+
+const OrderCollection& OrderBookEngine::GetOrderCollection() const
+{
+    return Orders;
+}
+
+const PriceLevelCollection& OrderBookEngine::GetAskPriceLevelCollection() const
+{
+    return AskPriceLevels;
+}
+
+const PriceLevelCollection& OrderBookEngine::GetBidPriceLevelCollection() const
+{
+    return BidPriceLevels;
 }

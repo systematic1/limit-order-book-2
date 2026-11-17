@@ -22,7 +22,10 @@ PriceLevelCollection::PriceLevelCollection(int capacityPowerOf2)
     Available = new bool[Capacity];
 
     for (int index = 0; index < Capacity; index++)
+    {
         Available[index] = true;
+        Levels[index] = PriceLevel();
+    }
 }
 
 PriceLevelCollection::~PriceLevelCollection() {

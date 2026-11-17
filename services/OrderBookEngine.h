@@ -26,6 +26,10 @@ public:
     void NotifyOrderFillStatus(const Order& order, OrderStatus status, const FillResults& fillResults) const;
     std::function<void(long, long, OrderStatus, const std::string&)> NotifyFunction;
 
+    const OrderCollection& GetOrderCollection() const;
+    const PriceLevelCollection& GetAskPriceLevelCollection() const;
+    const PriceLevelCollection& GetBidPriceLevelCollection() const;
+
 private:
     OrderStatus ValidateOrder(const Order& order) const;
     bool DoesOrderViolateRisk(const Order& order) const;
@@ -33,6 +37,5 @@ private:
     bool AddOrderToBook(Order& order);
     bool IsDuplicateOrder(long orderId) const;
 };
-
 
 #endif //LIMITORDERBOOK2_ORDERBOOKENGINE_H

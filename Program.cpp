@@ -22,20 +22,18 @@ Program::Program()
         SendNotification(a, b, c, d);
     };
     Engine = OrderBookEngine(1024, 512, notify);
-    StringBuffer.reserve(256);
-
-    _rd();
+    RandomDevice();
 }
 
 void Program::RunTest(const std::atomic<bool>& stopRequest)
 {
-    std::mt19937 rng(_rd());
+    std::mt19937 rng(RandomDevice());
     std::uniform_int_distribution<int> randDistInt(1, 1000000);
 
     std::vector<int> orderNumbers;
     const int numberOfOrders = 500;
     const long highPrice = 1200L;
-    const long lowPrice = 1175L;
+    const long lowPrice = 1150L;
     const int lowQuantity = 1;
     const int highQuantity = 50;
 
@@ -264,15 +262,17 @@ void Program::SubmitOrder(Order& newOrder, const char requestType)
 {
     OrderStatus status = OrderStatus::UNKNOWN;
     char type = '\0';
+    char side = '\0';
 
     // Determine the order type and call the appropriate method to handle
     switch (requestType)
     {
         case 'A':
+            side = newOrder.Side == OrderSide::SELL ? 'S' : 'B';
             type = newOrder.Type == OrderType::LIMIT ? 'L' : 'M';
             std::cout << "Adding order #" << newOrder.OrderId << " => " <<
-                newOrder.Side << ", " << newOrder.Price << ", " << newOrder.TotalQuantity <<
-                ", " << type;
+                side << ", $" << newOrder.Price << ", QTY=" << newOrder.TotalQuantity <<
+                ", " << type << std::endl;
             status = Engine.AddOrder(newOrder);
             break;
 
@@ -320,8 +320,7 @@ void Program::SendNotification(long accountId, long orderId, OrderStatus status,
 
 int Program::FindVectorData(const std::vector<int>& vec, int value) const
 {
-    int index = 0;
-    for (; index < vec.size(); index++)
+    for (int index = 0; index < vec.size(); index++)
     {
         if (vec[index] == value)
             return index;

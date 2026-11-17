@@ -24,11 +24,11 @@ public:
 
 private:
     OrderBookEngine Engine;
-    std::string StringBuffer;
     const char* LobListenerFifo = "/tmp/lob_listen";
     const char* LobClientFifo = "/tmp/lob_client";
     bool ShouldHandleNotifications {false};
-    std::random_device _rd;
+    std::random_device RandomDevice;
+
     int FindVectorData(const std::vector<int>& vec, int value) const;
 };
 

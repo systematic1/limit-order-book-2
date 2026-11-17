@@ -6,8 +6,7 @@
 
 #include <stdexcept>
 
-OrderCollection::OrderCollection(int capacityPowerOf2)
-{
+OrderCollection::OrderCollection(int capacityPowerOf2) {
     if (capacityPowerOf2 > 0 && (capacityPowerOf2 & (capacityPowerOf2 - 1)) != 0)
         throw std::invalid_argument("The capacityPowerOf2 parameter must be a positive power of 2.");
 
@@ -18,12 +17,18 @@ OrderCollection::OrderCollection(int capacityPowerOf2)
 
     Orders = new Order[Capacity];
     Available = new bool[Capacity];
+
+    for (int index = 0; index < Capacity; index++)
+    {
+        Available[index] = true;
+        Orders[index] = Order();
+    }
 }
 
 OrderCollection::~OrderCollection()
 {
-    delete Orders;
-    delete Available;
+    delete[] Orders;
+    delete[] Available;
 }
 
 int OrderCollection::FindOrderIndex(const long orderId) const
