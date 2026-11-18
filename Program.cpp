@@ -58,7 +58,9 @@ void Program::RunTest(const std::atomic<bool>& stopRequest)
         else
             orderType = OrderType::MARKET;
 
-        if (randDistInt(rng) % 3 > 0 || orderNumbers.empty())
+        long accountId = ((randDistInt(rng) % 25) + 1) * 11111L;
+
+        if (randDistInt(rng) % 3 > 0 || orderNumbers.size() < 5)
         {
             action = 'A';
             do
@@ -77,12 +79,12 @@ void Program::RunTest(const std::atomic<bool>& stopRequest)
         }
 
         Order newOrder(newOrderId, price, side, orderType, quantity, quantity, -1,
-            0L, TimeToLive::GTC, 99999L, 888888L);
+            0L, TimeToLive::GTC, accountId, 888888L);
         SubmitOrder(newOrder, action);
 
-        std::cout << " * [" << index << "] Sent Order #" << newOrderId << ": " <<
-            action << " (" << orderType << ") --> " << side << ": $" << "price * 100.0" <<
-            ": " << quantity << std::endl;
+        std::cout << "[" << index << "] Sent Order #" << newOrderId << ": " <<
+            action << " (" << orderType << ") --> " << side << ": $" << price <<
+            ": Q=" << quantity << ": ACCT=" << accountId << std::endl;
     }
 }
 

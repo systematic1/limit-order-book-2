@@ -29,8 +29,8 @@ PriceLevelCollection::PriceLevelCollection(int capacityPowerOf2)
 }
 
 PriceLevelCollection::~PriceLevelCollection() {
-    delete Levels;
-    delete Available;
+    delete[] Levels;
+    delete[] Available;
 }
 
 int PriceLevelCollection::FindLevelIndex(const long price) const
