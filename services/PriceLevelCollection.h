@@ -15,6 +15,7 @@ private:
     bool* Available;
     int CountInUse;
     int LastIndex;
+    int HighestIndex;
 
     inline static PriceLevel NullPriceLevel = PriceLevel(-1L, -1L, -1L, OrderSide::BUY);
 

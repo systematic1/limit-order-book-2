@@ -26,7 +26,8 @@ enum OrderStatus
     DUPLICATE,
     NOT_FOUND,
     ACCEPTED_AND_WAITING,
-    REJECTED
+    REJECTED,
+    REJECTED_NO_MATCHES
 };
 
 enum TimeToLive

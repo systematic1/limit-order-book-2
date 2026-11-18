@@ -6,7 +6,7 @@
 
 #include <stdexcept>
 
-OrderCollection::OrderCollection(int capacityPowerOf2) {
+OrderCollection::OrderCollection(const int capacityPowerOf2) {
     if (capacityPowerOf2 > 0 && (capacityPowerOf2 & (capacityPowerOf2 - 1)) != 0)
         throw std::invalid_argument("The capacityPowerOf2 parameter must be a positive power of 2.");
 
@@ -14,6 +14,7 @@ OrderCollection::OrderCollection(int capacityPowerOf2) {
     CapacityMask = Capacity - 1;
     CountInUse = 0;
     LastIndex = 0;
+    HighestIndex = -1;
 
     Orders = new Order[Capacity];
     Available = new bool[Capacity];
@@ -35,7 +36,7 @@ int OrderCollection::FindOrderIndex(const long orderId) const
 {
     if (CountInUse > 0)
     {
-        for (int index = 0; index < Capacity; index++)
+        for (int index = 0; index <= HighestIndex; index++)
         {
             if (!Available[index] && Orders[index].OrderId == orderId)
                 return index;
@@ -93,6 +94,9 @@ int OrderCollection::AddOrder(const Order& order, PriceLevel& priceLevel)
 
             priceLevel.NewestOrderIndex = LastIndex;
 
+            if (LastIndex > HighestIndex)
+                HighestIndex = LastIndex;
+
             return LastIndex;
         }
     }
@@ -129,6 +133,9 @@ bool OrderCollection::RemoveOrder(const Order& order, PriceLevel& priceLevel)
             Available[index] = true;
             LastIndex = index > 0 ? index - 1 : 0;
             CountInUse--;
+
+            if (index == HighestIndex)
+                HighestIndex--;
 
             return true;
         }

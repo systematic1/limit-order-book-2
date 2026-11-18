@@ -19,8 +19,8 @@ public:
     void RunTest(const std::atomic<bool>& stopRequest);
     void RunWithListener(const std::atomic<bool> &stopRequest);
     void ProcessAndSend(const std::string& message, Order& newOrder);
-    void SubmitOrder(Order& newOrder, char requestType);
     void SendNotification(long accountId, long orderId, OrderStatus status, const std::string& message) const;
+    OrderStatus SubmitOrder(Order& newOrder, char requestType);
 
 private:
     OrderBookEngine Engine;

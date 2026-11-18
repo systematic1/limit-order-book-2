@@ -17,6 +17,7 @@ PriceLevelCollection::PriceLevelCollection(int capacityPowerOf2)
     CapacityMask = capacityPowerOf2 = capacityPowerOf2 - 1;
     CountInUse = 0;
     LastIndex = 0;
+    HighestIndex = -1;
 
     Levels = new PriceLevel[Capacity];
     Available = new bool[Capacity];
@@ -37,7 +38,7 @@ int PriceLevelCollection::FindLevelIndex(const long price) const
 {
     if (CountInUse > 0)
     {
-        for (int index = 0; index < Capacity; index++)
+        for (int index = 0; index <= HighestIndex; index++)
         {
             if (Available[index] && Levels[index].Price == price)
                 return index;
@@ -58,7 +59,7 @@ PriceLevel& PriceLevelCollection::GetPriceLevelByPrice(const long price) const
 
 PriceLevel& PriceLevelCollection::GetPriceLevelByIndex(const int index) const
 {
-    if (index >= 0 && index < Capacity && !Available[index])
+    if (index >= 0 && index <= HighestIndex && !Available[index])
         return Levels[index];
 
     return NullPriceLevel;
@@ -69,7 +70,7 @@ int PriceLevelCollection::GetNextHigherPriceLevel(const long price) const
     long nearestHigherPrice = LONG_MAX;
     int nextHigherIndex = -1;
 
-    for (int index = 0; index < Capacity; index++)
+    for (int index = 0; index <= HighestIndex; index++)
     {
         if (!Available[index] && Levels[index].Price > price)
         {
@@ -86,7 +87,7 @@ int PriceLevelCollection::GetNextLowerPriceLevel(const long price) const
     long nearestLowerPrice = LONG_MIN;
     int nextLowerIndex = -1;
 
-    for (int index = 0; index < Capacity; index++)
+    for (int index = 0; index <= HighestIndex; index++)
     {
         if (!Available[index] && Levels[index].Price < price)
         {
@@ -140,6 +141,9 @@ int PriceLevelCollection::AddPriceLevel(const long price, const OrderSide side)
             Available[LastIndex] = false;
             CountInUse++;
 
+            if (LastIndex > HighestIndex)
+                HighestIndex = LastIndex;
+
             return LastIndex;
         }
     }
@@ -173,6 +177,9 @@ bool PriceLevelCollection::RemovePriceLevel(long price)
             Available[index] = true;
             LastIndex = index;
             CountInUse--;
+
+            if (index == HighestIndex)
+                HighestIndex--;
 
             return true;
         }

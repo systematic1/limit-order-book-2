@@ -16,6 +16,32 @@
 
 #include "models/FillResults.h"
 
+static const char* getStatusText(const OrderStatus& status)
+{
+    switch (status) {
+        case OrderStatus::ACCEPTED_AND_WAITING:
+            return "ACCEPTED_AND_WAITING"; break;
+        case OrderStatus::FILLED:
+            return "FILLED"; break;
+        case OrderStatus::PARTIALLY_FILLED:
+            return "PARTIALLY_FILLED"; break;
+        case OrderStatus::CANCELLED:
+            return "CANCELLED"; break;
+        case OrderStatus::DUPLICATE:
+            return "DUPLICATE"; break;
+        case OrderStatus::REJECTED:
+            return "REJECTED"; break;
+        case OrderStatus::REJECTED_NO_MATCHES:
+            return "REJECTED_NO_MATCHES"; break;
+        case OrderStatus::NOT_FOUND:
+            return "NOT_FOUND"; break;
+        case OrderStatus::UNKNOWN:
+            return "UNKNOWN STATUS"; break;
+        default:
+            return "UNMAPPED STATUS"; break;
+    }
+}
+
 Program::Program()
 {
     auto notify = [this](const long a, const long b, const OrderStatus c, const std::string& d) {
@@ -80,11 +106,19 @@ void Program::RunTest(const std::atomic<bool>& stopRequest)
 
         Order newOrder(newOrderId, price, side, orderType, quantity, quantity, -1,
             0L, TimeToLive::GTC, accountId, 888888L);
-        SubmitOrder(newOrder, action);
+        auto status = SubmitOrder(newOrder, action);
+
+        if (action == 'A' && status != OrderStatus::PARTIALLY_FILLED && status != OrderStatus::ACCEPTED_AND_WAITING)
+        {   // If add indicates order no longer exists in orderbook, remove it from list of waiting orders
+            int remIndex = FindVectorData(orderNumbers, newOrderId);
+            if (remIndex > -1)
+                orderNumbers.erase(orderNumbers.begin() + remIndex, orderNumbers.begin() + remIndex);
+        }
 
         std::cout << "[" << index << "] Sent Order #" << newOrderId << ": " <<
             action << " (" << orderType << ") --> " << side << ": $" << price <<
             ": Q=" << quantity << ": ACCT=" << accountId << std::endl;
+        std::cout << "    <== " << getStatusText(status) << std::endl;
     }
 }
 
@@ -131,8 +165,6 @@ void Program::RunWithListener(const std::atomic<bool>& stopRequest)
 
 void Program::ProcessAndSend(const std::string& message, Order& newOrder)
 {
-    std::string value;
-
     try
     {
         // Convert the char array to an Order object
@@ -152,6 +184,7 @@ void Program::ProcessAndSend(const std::string& message, Order& newOrder)
         //  2345678901234|C|L|140000|S|50|98765432109|417|4673899928307501
         //  3456789012345|A|M|0|B|100|98765432109|1638|4678277000145185
 
+        std::string value;
         constexpr char separator {'|'};
         int fieldNumber {0};
         char requestType {'\0'};
@@ -260,7 +293,7 @@ void Program::ProcessAndSend(const std::string& message, Order& newOrder)
     }
 }
 
-void Program::SubmitOrder(Order& newOrder, const char requestType)
+OrderStatus Program::SubmitOrder(Order& newOrder, const char requestType)
 {
     OrderStatus status = OrderStatus::UNKNOWN;
     char type = '\0';
@@ -280,7 +313,7 @@ void Program::SubmitOrder(Order& newOrder, const char requestType)
 
         case 'C':
             std::cout << "Canceling order #" << newOrder.OrderId;
-            status = Engine.CancelOrder(newOrder);
+            status = Engine.CancelOrder(newOrder.OrderId);
             break;
 
         default:
@@ -289,8 +322,7 @@ void Program::SubmitOrder(Order& newOrder, const char requestType)
             break;
     }
 
-    //  * Send notification back to originator
-    Engine.NotifyOrderFillStatus(newOrder, status, NullFillResults);
+    return status;
 }
 
 void Program::SendNotification(long accountId, long orderId, OrderStatus status, const std::string& message) const
@@ -317,6 +349,11 @@ void Program::SendNotification(long accountId, long orderId, OrderStatus status,
             outStream << oss.str() << std::endl;
             outStream.flush();
         }
+    }
+    else
+    {
+        std::cout << "  ** NOTIFY ----> AC=" << accountId << ", ID=" << orderId <<
+            ", ST=" << getStatusText(status) << ": " << message << std::endl;
     }
 }
 

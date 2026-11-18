@@ -3,6 +3,9 @@
 //
 
 #include "OrderBookEngine.h"
+
+#include <filesystem>
+
 #include "../models/Enums.h"
 
 #include <iostream>
@@ -39,12 +42,9 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
     if (order.Side == OrderSide::BUY)
     {
         // If market order, find the lowest ask price available to start
-        if (order.Type == OrderType::MARKET)
-        {
-            levelIndex = AskPriceLevels.GetNextLowerPriceLevel(LONG_MIN);
-            if (levelIndex != -1)
-                price = AskPriceLevels.GetPriceLevelByIndex(levelIndex).Price;
-        }
+        levelIndex = AskPriceLevels.GetNextHigherPriceLevel(LONG_MIN);
+        if (levelIndex != -1)
+            price = AskPriceLevels.GetPriceLevelByIndex(levelIndex).Price;
 
         // We keep looking for more orders to fill until our order is completed
         while (order.RemainingQuantity > 0 && wasFilled)
@@ -67,12 +67,9 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
     else    // Sell OrderSide
     {
         // If market order, find the highest bid price available to start
-        if (order.Type == OrderType::MARKET)
-        {
-            levelIndex = AskPriceLevels.GetNextHigherPriceLevel(LONG_MAX);
-            if (levelIndex != -1)
-                price = AskPriceLevels.GetPriceLevelByIndex(levelIndex).Price;
-        }
+        levelIndex = BidPriceLevels.GetNextLowerPriceLevel(LONG_MAX);
+        if (levelIndex != -1)
+            price = BidPriceLevels.GetPriceLevelByIndex(levelIndex).Price;
 
         // We keep looking for more orders to fill until our order is completed
         while (order.RemainingQuantity > 0 && wasFilled)                                        // ---
@@ -103,25 +100,20 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
     if (order.RemainingQuantity == 0)
         return OrderStatus::FILLED;
 
+    // If we couldn't fill any of a market order, reject it, otherwise partial fill it.
+    if (order.Type == OrderType::MARKET)
+        return quantityFilled > 0 ? OrderStatus::PARTIALLY_FILLED : OrderStatus::REJECTED_NO_MATCHES;
+
     // If we run out of qualifying limit orders, store the order in the book (resting)
     if (AddOrderToBook(order))
-    {
-        if (quantityFilled > 0)
-            return OrderStatus::PARTIALLY_FILLED;
-        else
-            return OrderStatus::ACCEPTED_AND_WAITING;
-    }
-    else
-        return OrderStatus::REJECTED;
+        return quantityFilled > 0 ? OrderStatus::PARTIALLY_FILLED : OrderStatus::ACCEPTED_AND_WAITING;
+
+    return OrderStatus::REJECTED;
 }
 
-OrderStatus OrderBookEngine::CancelOrder(const Order& order)
+OrderStatus OrderBookEngine::CancelOrder(long orderId)
 {
-    OrderStatus status = ValidateOrder(order);
-    if (status != OrderStatus::UNKNOWN && status != OrderStatus::DUPLICATE)
-        return status;
-
-    Order storedOrder = Orders.GetOrder(order.OrderId);
+    Order storedOrder = Orders.GetOrder(orderId);
     if (storedOrder.IsNull())
         return OrderStatus::NOT_FOUND;
 
@@ -147,74 +139,15 @@ OrderStatus OrderBookEngine::CancelOrder(const Order& order)
     return OrderStatus::CANCELLED;
 }
 
-void OrderBookEngine::NotifyOrderFillStatus(const Order& order, OrderStatus status,
-    const FillResults& fillResults) const
+void OrderBookEngine::NotifyOrderFillStatus(const FillResults& fillResults) const
 {
-    std::ostringstream oss;
-
-    switch (status)
-    {
-        case OrderStatus::CANCELLED:
-            oss << "Order " << order.OrderId << " has been cancelled.";
-            break;
-
-        case OrderStatus::DUPLICATE:
-            oss << "This order (" << order.OrderId << " has already been submitted.";
-            break;
-
-        case OrderStatus::FILLED:
-            if (!fillResults.IsNull())
-            {
-                oss << "Order " << order.OrderId << " has been filled with quantity "
-                    << fillResults.FilledQuantity << " at $"
-                    << static_cast<float>(fillResults.FillPrice) / 100.0;
-            }
-            else
-                oss << "Order " << order.OrderId << " has been filled (no details).";
-            break;
-
-        case OrderStatus::NOT_FOUND:
-            oss << "This order (" << order.OrderId << ") is invalid.";
-            break;
-
-        case OrderStatus::PARTIALLY_FILLED:
-            if (!fillResults.IsNull())
-            {
-                oss << "Order " << order.OrderId << " has been partially filled with quantity "
-                    << fillResults.FilledQuantity << " at $"
-                    << static_cast<float>(fillResults.FillPrice) / 100.0;
-            }
-            else
-                oss << "Order " << order.OrderId << " has been partially filled (no details).";
-            break;
-
-        case OrderStatus::REJECTED:
-            if (!fillResults.IsNull())
-            {
-                oss << "Order " << order.OrderId << " has been rejected for reason: "
-                    << fillResults.Message;
-            }
-            else
-                oss << "Order " << order.OrderId << " has been rejected (no details).";
-            break;
-
-        case OrderStatus::ACCEPTED_AND_WAITING:
-            oss << "Order " << order.OrderId << " has been accepted (waiting).";
-            break;
-
-        default:
-            oss << "Order status " << status << " was returned for order " << order.OrderId;
-            break;
-    }
-
     try
     {
-        const std::string message = oss.str();
-        NotifyFunction(99999, order.OrderId, status, message);
+        NotifyFunction(99999, fillResults.OrderId, fillResults.Status, fillResults.Message);
     }
     catch (std::exception& e)
     {
-        std::cout << "Error while notifying client." << e.what() << std::endl << std::endl;
+        std::cout << "Error while notifying client." << std::endl << e.what() << std::endl << std::endl;
     }
 }
 
@@ -238,6 +171,7 @@ OrderStatus OrderBookEngine::ValidateOrder(const Order& order) const
 
 bool OrderBookEngine::DoesOrderViolateRisk(const Order& order) const
 {
+    // This will not be implemented - always assume risk check passes
     return false;
 }
 
@@ -245,58 +179,88 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
 {
     OrderSide matchSide = (order.Side == OrderSide::SELL ? OrderSide::BUY : OrderSide::SELL);
     OrderStatus matchedStatus = OrderStatus::UNKNOWN;
+    OrderStatus currentStatus = OrderStatus::UNKNOWN;
     PriceLevelCollection priceLevels = (order.Side == OrderSide::SELL ? BidPriceLevels : AskPriceLevels);
     int quantityRemaining = order.RemainingQuantity;
     int quantityFilled = 0;
+    int matchRemaining = 0;
+    int currentRemaining = quantityRemaining;
+
     const auto epoch_millis = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()
     ).count();
 
     // Search the order list for the best available order by time-priority
     Order matchedOrder = Orders.FindBestAtPriceLevel(priceLevel, priceLevels, matchSide);
+    if (matchedOrder.IsNull())
+        return 0;
+
+    matchRemaining = matchedOrder.RemainingQuantity;
+
     if (!matchedOrder.IsNull())
     {
         if (matchedOrder.AccountId != order.AccountId && matchedOrder.RemainingQuantity > 0)
         {
             if (matchedOrder.RemainingQuantity >= quantityRemaining)
             {
-                matchedStatus = OrderStatus::FILLED;
+                matchedStatus = (matchedOrder.RemainingQuantity == quantityRemaining ? OrderStatus::FILLED : OrderStatus::PARTIALLY_FILLED);
+                currentStatus = OrderStatus::FILLED;
                 matchedOrder.RemainingQuantity -= quantityRemaining;
                 matchedOrder.Timestamp = epoch_millis;
                 order.Timestamp = matchedOrder.Timestamp;
                 order.RemainingQuantity = 0;
                 quantityFilled = quantityRemaining;
+                quantityRemaining = order.RemainingQuantity;
             }
             else       // Not enough to completely fill order
             {
-                quantityRemaining = matchedOrder.RemainingQuantity;
+                quantityFilled = matchedOrder.RemainingQuantity;
+                quantityRemaining -= quantityFilled;
                 order.RemainingQuantity -= quantityRemaining;
                 order.Timestamp = epoch_millis;
                 matchedStatus = OrderStatus::PARTIALLY_FILLED;
+                currentStatus = OrderStatus::FILLED;
                 matchedOrder.Timestamp = order.Timestamp;
                 matchedOrder.RemainingQuantity = 0;
-                quantityFilled = quantityRemaining;
             }
 
-            const FillResults results = FillResults(
+            FillResults matchResults = FillResults(
                 matchedOrder.OrderId,
-                order.RemainingQuantity,
+                matchRemaining,
                 quantityFilled,
-                quantityRemaining,
+                matchedOrder.RemainingQuantity,
                 priceLevel.Price,
                 0,
-                std::string()
+                std::string(),
+                matchedStatus
             );
-            NotifyOrderFillStatus(matchedOrder, matchedStatus, results);
+            SetStatusMessage(matchResults);
+            NotifyOrderFillStatus(matchResults);
+
+            FillResults currentResults = FillResults(
+                order.OrderId,
+                currentRemaining,
+                quantityFilled,
+                order.RemainingQuantity,
+                priceLevel.Price,
+                0,
+                std::string(),
+                currentStatus
+            );
+            SetStatusMessage(currentResults);
+            NotifyOrderFillStatus(matchResults);
 
             // Update price level data
-            priceLevel.QuantityAvailable -= quantityRemaining;
+            priceLevel.QuantityAvailable -= quantityFilled;
             priceLevel.LastFillQuantity = quantityRemaining;
             priceLevel.LastFillTimestamp = epoch_millis;
 
-            // If the bestOrder was completely filled, it needs to be removed from the orderbook
+            // If either order was completely filled, it needs to be removed from the orderbook
             if (matchedOrder.RemainingQuantity == 0)
                 Orders.RemoveOrder(matchedOrder, priceLevel);
+
+            if (order.RemainingQuantity == 0)
+                Orders.RemoveOrder(order, priceLevel);
         }
     }
 
@@ -348,22 +312,84 @@ bool OrderBookEngine::AddOrderToBook(Order& order)
     return true;
 }
 
-bool OrderBookEngine::IsDuplicateOrder(const long orderId) const
+void OrderBookEngine::SetStatusMessage(FillResults &fillResults)
+{
+    std::ostringstream oss;
+
+    switch (fillResults.Status)
+    {
+        case OrderStatus::CANCELLED:
+            oss << "Order " << fillResults.OrderId << " has been cancelled.";
+            break;
+
+        case OrderStatus::DUPLICATE:
+            oss << "This order (" << fillResults.OrderId << " has already been submitted.";
+            break;
+
+        case OrderStatus::FILLED:
+            if (!fillResults.IsNull())
+            {
+                oss << "Order " << fillResults.OrderId << " has been filled with quantity "
+                    << fillResults.FilledQuantity << " at $"
+                    << static_cast<float>(fillResults.FillPrice) / 100.0;
+            }
+            else
+                oss << "Order " << fillResults.OrderId << " has been filled (no details).";
+            break;
+
+        case OrderStatus::NOT_FOUND:
+            oss << "This order (" << fillResults.OrderId << ") is invalid.";
+            break;
+
+        case OrderStatus::PARTIALLY_FILLED:
+            if (!fillResults.IsNull())
+            {
+                oss << "Order " << fillResults.OrderId << " has been partially filled with quantity "
+                    << fillResults.FilledQuantity << " at $"
+                    << static_cast<float>(fillResults.FillPrice) / 100.0;
+            }
+            else
+                oss << "Order " << fillResults.OrderId << " has been partially filled (no details).";
+            break;
+
+        case OrderStatus::REJECTED:
+            if (!fillResults.IsNull())
+            {
+                oss << "Order " << fillResults.OrderId << " has been rejected for reason: "
+                    << fillResults.Message;
+            }
+            else
+                oss << "Order " << fillResults.OrderId << " has been rejected (no details).";
+            break;
+
+        case OrderStatus::ACCEPTED_AND_WAITING:
+            oss << "Order " << fillResults.OrderId << " has been accepted (waiting).";
+            break;
+
+        default:
+            oss << "Order status " << fillResults.Status << " was returned for order " << fillResults.OrderId;
+            break;
+    }
+
+    const std::string message = oss.str();
+}
+
+inline bool OrderBookEngine::IsDuplicateOrder(const long orderId) const
 {
     return Orders.FindOrderIndex(orderId) != -1;
 }
 
-const OrderCollection& OrderBookEngine::GetOrderCollection() const
+inline const OrderCollection& OrderBookEngine::GetOrderCollection() const
 {
     return Orders;
 }
 
-const PriceLevelCollection& OrderBookEngine::GetAskPriceLevelCollection() const
+inline const PriceLevelCollection& OrderBookEngine::GetAskPriceLevelCollection() const
 {
     return AskPriceLevels;
 }
 
-const PriceLevelCollection& OrderBookEngine::GetBidPriceLevelCollection() const
+inline const PriceLevelCollection& OrderBookEngine::GetBidPriceLevelCollection() const
 {
     return BidPriceLevels;
 }
