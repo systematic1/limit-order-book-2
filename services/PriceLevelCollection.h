@@ -5,14 +5,16 @@
 #ifndef LIMITORDERBOOK2_PRICELEVELCOLLECTION_H
 #define LIMITORDERBOOK2_PRICELEVELCOLLECTION_H
 
+#include <vector>
+
 #include "../models/PriceLevel.h"
 
 class PriceLevelCollection {
 private:
     int Capacity;
     int CapacityMask;
-    PriceLevel* Levels;
-    bool* Available;
+    std::vector<PriceLevel> Levels;
+    std::vector<bool> Available;
     int CountInUse;
     int LastIndex;
     int HighestIndex;
@@ -21,11 +23,11 @@ private:
 
 public:
     PriceLevelCollection(int capacityPowerOf2);
-    ~PriceLevelCollection();
 
+    int Length() const;
     int FindLevelIndex(long price) const;
-    PriceLevel& GetPriceLevelByPrice(long price) const;
-    PriceLevel& GetPriceLevelByIndex(int index) const;
+    PriceLevel& GetPriceLevelByPrice(long price);
+    PriceLevel& GetPriceLevelByIndex(int index);
     int GetNextHigherPriceLevel(long price) const;
     int GetNextLowerPriceLevel(long price) const;
     int AddPriceLevel(long price, OrderSide side);

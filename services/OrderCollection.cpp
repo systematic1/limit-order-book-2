@@ -6,7 +6,8 @@
 
 #include <stdexcept>
 
-OrderCollection::OrderCollection(const int capacityPowerOf2) {
+OrderCollection::OrderCollection(const int capacityPowerOf2)
+{
     if (capacityPowerOf2 > 0 && (capacityPowerOf2 & (capacityPowerOf2 - 1)) != 0)
         throw std::invalid_argument("The capacityPowerOf2 parameter must be a positive power of 2.");
 
@@ -16,8 +17,8 @@ OrderCollection::OrderCollection(const int capacityPowerOf2) {
     LastIndex = 0;
     HighestIndex = -1;
 
-    Orders = new Order[Capacity];
-    Available = new bool[Capacity];
+    Orders = std::vector<Order>(Capacity);
+    Available = std::vector<bool>(Capacity);
 
     for (int index = 0; index < Capacity; index++)
     {
@@ -26,10 +27,17 @@ OrderCollection::OrderCollection(const int capacityPowerOf2) {
     }
 }
 
-OrderCollection::~OrderCollection()
+int OrderCollection::MaxIndex() const
 {
-    delete[] Orders;
-    delete[] Available;
+    return HighestIndex;
+}
+
+const Order& OrderCollection::OrderAtIndex(int index) const
+{
+    if (index >= 0 && index < HighestIndex && !Available[index])
+        return Orders[index];
+
+    return NullOrder;
 }
 
 int OrderCollection::FindOrderIndex(const long orderId) const
@@ -144,7 +152,7 @@ bool OrderCollection::RemoveOrder(const Order& order, PriceLevel& priceLevel)
     return false;
 }
 
-Order& OrderCollection::FindBestAtPriceLevel(PriceLevel& nextLevel, const PriceLevelCollection& levels,
+Order& OrderCollection::FindBestAtPriceLevel(PriceLevel& nextLevel, PriceLevelCollection& levels,
     const OrderSide matchSide)
 {
     // Search for the next order by date/time and price (ask=search higher, bid=search lower)

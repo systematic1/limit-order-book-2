@@ -19,8 +19,8 @@ PriceLevelCollection::PriceLevelCollection(int capacityPowerOf2)
     LastIndex = 0;
     HighestIndex = -1;
 
-    Levels = new PriceLevel[Capacity];
-    Available = new bool[Capacity];
+    Levels = std::vector<PriceLevel>(Capacity);
+    Available = std::vector<bool>(Capacity);
 
     for (int index = 0; index < Capacity; index++)
     {
@@ -29,10 +29,11 @@ PriceLevelCollection::PriceLevelCollection(int capacityPowerOf2)
     }
 }
 
-PriceLevelCollection::~PriceLevelCollection() {
-    delete[] Levels;
-    delete[] Available;
+int PriceLevelCollection::Length() const
+{
+    return HighestIndex;
 }
+
 
 int PriceLevelCollection::FindLevelIndex(const long price) const
 {
@@ -48,7 +49,7 @@ int PriceLevelCollection::FindLevelIndex(const long price) const
     return -1;
 }
 
-PriceLevel& PriceLevelCollection::GetPriceLevelByPrice(const long price) const
+PriceLevel& PriceLevelCollection::GetPriceLevelByPrice(const long price)
 {
     const int index = FindLevelIndex(price);
     if (index == -1)
@@ -57,7 +58,7 @@ PriceLevel& PriceLevelCollection::GetPriceLevelByPrice(const long price) const
     return Levels[index];
 }
 
-PriceLevel& PriceLevelCollection::GetPriceLevelByIndex(const int index) const
+PriceLevel& PriceLevelCollection::GetPriceLevelByIndex(const int index)
 {
     if (index >= 0 && index <= HighestIndex && !Available[index])
         return Levels[index];

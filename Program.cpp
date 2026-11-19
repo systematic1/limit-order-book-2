@@ -42,12 +42,11 @@ static const char* getStatusText(const OrderStatus& status)
     }
 }
 
-Program::Program()
+Program::Program() : Engine(1024, 512, nullptr)
 {
-    auto notify = [this](const long a, const long b, const OrderStatus c, const std::string& d) {
+    Engine.NotifyFunction = [this](const long a, const long b, const OrderStatus c, const std::string& d) {
         SendNotification(a, b, c, d);
     };
-    Engine = OrderBookEngine(1024, 512, notify);
     RandomDevice();
 }
 
@@ -71,7 +70,7 @@ void Program::RunTest(const std::atomic<bool>& stopRequest)
 
     for (int index = 0; index < numberOfOrders; index++)
     {
-        if (randDistInt(rng) % 10 > 5)
+        if (randDistInt(rng) % 10 > 4)
             side = OrderSide::BUY;
         else
             side = OrderSide::SELL;
@@ -79,12 +78,12 @@ void Program::RunTest(const std::atomic<bool>& stopRequest)
         long price = randDistInt(rng) % (highPrice - lowPrice) + lowPrice;
         int quantity = randDistInt(rng) % (highQuantity - lowQuantity) + lowQuantity;
 
-        if (randDistInt(rng) % 10 > 6)
+        if (randDistInt(rng) % 10 > 3)
             orderType = OrderType::LIMIT;
         else
             orderType = OrderType::MARKET;
 
-        long accountId = ((randDistInt(rng) % 25) + 1) * 11111L;
+        long accountId = ((randDistInt(rng) % 100) + 1) * 11111L;
 
         if (randDistInt(rng) % 3 > 0 || orderNumbers.size() < 5)
         {
@@ -119,6 +118,21 @@ void Program::RunTest(const std::atomic<bool>& stopRequest)
             action << " (" << orderType << ") --> " << side << ": $" << price <<
             ": Q=" << quantity << ": ACCT=" << accountId << std::endl;
         std::cout << "    <== " << getStatusText(status) << std::endl;
+
+        if (index % 10 == 0) {
+            const OrderCollection& orderCol = Engine.GetOrderCollection();
+            std::cout << std::endl << "============= ORDER COLLECTION ===============" << std::endl;
+
+            /*for (int i = 0; i <= orderCol.MaxIndex(); i++) {
+                auto order = orderCol.OrderAtIndex(i);
+                if (!order.IsNull()) {
+                    std::cout << order.OrderId << "\t " << (order.Side == OrderSide::BUY ? "BUY \t$" : "SELL\t$")
+                        << (order.Price / 100.0) << "\t RQ=" << order.RemainingQuantity << "\t TQ=" << order.TotalQuantity << "\t "
+                        << (order.Type == OrderType::LIMIT ? "LIMIT \t" : "MARKET\t") << std::endl;
+                }
+            }
+            std::cout << std::endl << std::endl;*/
+        }
     }
 }
 

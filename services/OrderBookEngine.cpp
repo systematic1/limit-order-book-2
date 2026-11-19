@@ -180,7 +180,7 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
     OrderSide matchSide = (order.Side == OrderSide::SELL ? OrderSide::BUY : OrderSide::SELL);
     OrderStatus matchedStatus = OrderStatus::UNKNOWN;
     OrderStatus currentStatus = OrderStatus::UNKNOWN;
-    PriceLevelCollection priceLevels = (order.Side == OrderSide::SELL ? BidPriceLevels : AskPriceLevels);
+    PriceLevelCollection& priceLevels = (order.Side == OrderSide::SELL ? BidPriceLevels : AskPriceLevels);
     int quantityRemaining = order.RemainingQuantity;
     int quantityFilled = 0;
     int matchRemaining = 0;
@@ -379,17 +379,17 @@ inline bool OrderBookEngine::IsDuplicateOrder(const long orderId) const
     return Orders.FindOrderIndex(orderId) != -1;
 }
 
-inline const OrderCollection& OrderBookEngine::GetOrderCollection() const
+const OrderCollection& OrderBookEngine::GetOrderCollection() const
 {
     return Orders;
 }
 
-inline const PriceLevelCollection& OrderBookEngine::GetAskPriceLevelCollection() const
+const PriceLevelCollection& OrderBookEngine::GetAskPriceLevelCollection() const
 {
     return AskPriceLevels;
 }
 
-inline const PriceLevelCollection& OrderBookEngine::GetBidPriceLevelCollection() const
+const PriceLevelCollection& OrderBookEngine::GetBidPriceLevelCollection() const
 {
     return BidPriceLevels;
 }
