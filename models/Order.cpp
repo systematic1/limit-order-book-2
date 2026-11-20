@@ -3,7 +3,7 @@
 //
 
 #include "Order.h"
-#include <i386/limits.h>
+#include <climits>
 
 Order::Order(const long orderId, const long price, const OrderSide side, OrderType orderType,
              const int totalQuantity, const int remainingQuantity, const int priceLevelIndex, const long timestamp,
@@ -33,7 +33,7 @@ void Order::Clear()
     Type = OrderType::LIMIT;
     TotalQuantity = 0L;
     RemainingQuantity = 0L;
-    PriceLevelIndex = 0L;
+    PriceLevelIndex = 0;
     TTL = TimeToLive::GTC;
     Timestamp = -1L;
     AccountId = 0L;

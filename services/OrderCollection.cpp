@@ -34,7 +34,7 @@ int OrderCollection::MaxIndex() const
 
 const Order& OrderCollection::OrderAtIndex(int index) const
 {
-    if (index >= 0 && index < HighestIndex && !Available[index])
+    if (index >= 0 && index <= HighestIndex && !Available[index])
         return Orders[index];
 
     return NullOrder;
@@ -63,7 +63,7 @@ Order& OrderCollection::GetOrder(long orderId)
     return Orders[index];
 }
 
-int OrderCollection::AddOrder(const Order& order, PriceLevel& priceLevel)
+int OrderCollection::AddOrder(Order& order, PriceLevel& priceLevel)
 {
     if (CountInUse < Capacity)
     {
@@ -152,30 +152,16 @@ bool OrderCollection::RemoveOrder(const Order& order, PriceLevel& priceLevel)
     return false;
 }
 
-Order& OrderCollection::FindBestAtPriceLevel(PriceLevel& nextLevel, PriceLevelCollection& levels,
-    const OrderSide matchSide)
+int OrderCollection::FindIndexBestAtPriceLevel(const PriceLevel& atLevel) const
 {
-    // Search for the next order by date/time and price (ask=search higher, bid=search lower)
-    // * Use the PriceLevel.NextHigherIndex or PriceLevel.NextLowerIndex
-    // * Move to next price level and search for orders matching that price level index
-    // * Find the oldest order
-
-    int nextIndex = -1;
-
-    while (nextLevel.Price > -1 && nextLevel.IsEmpty())
+    // Find the oldest order of all those at the given price level
+    if (atLevel.Price > -1 && atLevel.OldestOrderIndex != -1)
     {
-        nextIndex = (matchSide == OrderSide::BUY ? nextLevel.NextLowerLevelIndex : nextLevel.NextHigherLevelIndex);
-        if (nextIndex != -1)
-            nextLevel = levels.GetPriceLevelByIndex(nextIndex);
-        else
-            nextLevel = NullPriceLevel;
+        if (atLevel.OldestOrderIndex <= HighestIndex && !Available[atLevel.OldestOrderIndex])
+            return atLevel.OldestOrderIndex;
     }
+    else if (atLevel.OrderCount == 1 && atLevel.NewestOrderIndex != -1)
+        return atLevel.NewestOrderIndex;
 
-    if (nextLevel.Price > -1 && nextLevel.OldestOrderIndex != -1)
-    {
-        if (nextLevel.OldestOrderIndex < Capacity && !Available[nextLevel.OldestOrderIndex])
-            return Orders[nextLevel.OldestOrderIndex];
-    }
-
-    return NullOrder;
+    return -1;
 }

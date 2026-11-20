@@ -6,7 +6,7 @@
 
 #include <algorithm>
 #include <stdexcept>
-#include <i386/limits.h>
+#include <climits>
 
 PriceLevelCollection::PriceLevelCollection(int capacityPowerOf2)
 {
@@ -14,7 +14,7 @@ PriceLevelCollection::PriceLevelCollection(int capacityPowerOf2)
         throw std::invalid_argument("The capacityPowerOf2 parameter must be a power of 2.");
 
     Capacity = capacityPowerOf2;
-    CapacityMask = capacityPowerOf2 = capacityPowerOf2 - 1;
+    CapacityMask = capacityPowerOf2 - 1;
     CountInUse = 0;
     LastIndex = 0;
     HighestIndex = -1;
@@ -29,11 +29,18 @@ PriceLevelCollection::PriceLevelCollection(int capacityPowerOf2)
     }
 }
 
-int PriceLevelCollection::Length() const
+int PriceLevelCollection::MaxIndex() const
 {
     return HighestIndex;
 }
 
+const PriceLevel& PriceLevelCollection::LevelAtIndex(int index) const
+{
+    if (index >= 0 && index <= HighestIndex && !Available[index])
+        return Levels[index];
+
+    return NullPriceLevel;
+}
 
 int PriceLevelCollection::FindLevelIndex(const long price) const
 {
@@ -41,7 +48,7 @@ int PriceLevelCollection::FindLevelIndex(const long price) const
     {
         for (int index = 0; index <= HighestIndex; index++)
         {
-            if (Available[index] && Levels[index].Price == price)
+            if (!Available[index] && Levels[index].Price == price)
                 return index;
         }
     }
@@ -75,8 +82,11 @@ int PriceLevelCollection::GetNextHigherPriceLevel(const long price) const
     {
         if (!Available[index] && Levels[index].Price > price)
         {
-            nearestHigherPrice = std::min(Levels[index].Price, nearestHigherPrice);
-            nextHigherIndex = index;
+            if (Levels[index].Price < nearestHigherPrice)
+            {
+                nearestHigherPrice = Levels[index].Price;
+                nextHigherIndex = index;
+            }
         }
     }
 
@@ -92,8 +102,11 @@ int PriceLevelCollection::GetNextLowerPriceLevel(const long price) const
     {
         if (!Available[index] && Levels[index].Price < price)
         {
-            nearestLowerPrice = std::max(Levels[index].Price, nearestLowerPrice);
-            nextLowerIndex = index;
+            if (Levels[index].Price > nearestLowerPrice)
+            {
+                nearestLowerPrice = Levels[index].Price;
+                nextLowerIndex = index;
+            }
         }
     }
 

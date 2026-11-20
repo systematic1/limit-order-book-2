@@ -30,6 +30,6 @@ public:
     bool IsNull() const;
 };
 
-const auto NullPriceLevel = PriceLevel(-1L, -1L, -1L, OrderSide::BUY);
+inline auto NullPriceLevel = PriceLevel(-1L, -1L, -1L, OrderSide::BUY);
 
 #endif //LIMITORDERBOOK2_PRICELEVEL_H

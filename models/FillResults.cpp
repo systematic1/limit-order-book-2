@@ -8,7 +8,7 @@
 
 FillResults::FillResults(const long orderId, const int requestQty, const int filledQty,
                          const int remainingQty, const long fillPrice, const long auxData,
-                         const std::string& message, const OrderStatus orderStatus)
+                         const std::string& message, const OrderStatus orderStatus, const long accountId)
 {
     OrderId = orderId;
     RequestedQuantity = requestQty;
@@ -18,9 +18,11 @@ FillResults::FillResults(const long orderId, const int requestQty, const int fil
     AuxData = auxData;
     Message = message;
     Status = orderStatus;
+    AccountId = accountId;
 }
 
 bool FillResults::IsNull() const
 {
-    return OrderId == -1L && RequestedQuantity == -1L && RemainingQuantity == -1L && AuxData == LONG_MIN && Status == OrderStatus::UNKNOWN;
+    return OrderId == -1L && RequestedQuantity == -1L && RemainingQuantity == -1L && AuxData == LONG_MIN
+        && Status == OrderStatus::UNKNOWN && AccountId == -1L;
 }

@@ -44,8 +44,8 @@ static const char* getStatusText(const OrderStatus& status)
 
 Program::Program() : Engine(1024, 512, nullptr)
 {
-    Engine.NotifyFunction = [this](const long a, const long b, const OrderStatus c, const std::string& d) {
-        SendNotification(a, b, c, d);
+    Engine.NotifyFunction = [this](const FillResults& results) {
+        SendNotification(results);
     };
     RandomDevice();
 }
@@ -114,24 +114,51 @@ void Program::RunTest(const std::atomic<bool>& stopRequest)
                 orderNumbers.erase(orderNumbers.begin() + remIndex, orderNumbers.begin() + remIndex);
         }
 
-        std::cout << "[" << index << "] Sent Order #" << newOrderId << ": " <<
-            action << " (" << orderType << ") --> " << side << ": $" << price <<
-            ": Q=" << quantity << ": ACCT=" << accountId << std::endl;
+        std::cout << "[" << index << "] Sent Order #" << newOrderId << ": "
+            << action << " TY=" << (orderType == OrderType::LIMIT ? "LIM  " : "MKT  ")
+            << ": SD=" << (side == OrderSide::BUY ? "BUY   " : "SELL  " ) << ": $" << price
+            << ": QTY=" << quantity << ": ACCT=" << accountId << std::endl;
         std::cout << "    <== " << getStatusText(status) << std::endl;
 
-        if (index % 10 == 0) {
+        if (index % 10 == 9) {
             const OrderCollection& orderCol = Engine.GetOrderCollection();
-            std::cout << std::endl << "============= ORDER COLLECTION ===============" << std::endl;
+            std::cout << std::endl << "=============================== ORDER COLLECTION =================================" << std::endl;
 
-            /*for (int i = 0; i <= orderCol.MaxIndex(); i++) {
+            for (int i = 0; i <= orderCol.MaxIndex(); i++) {
                 auto order = orderCol.OrderAtIndex(i);
                 if (!order.IsNull()) {
                     std::cout << order.OrderId << "\t " << (order.Side == OrderSide::BUY ? "BUY \t$" : "SELL\t$")
-                        << (order.Price / 100.0) << "\t RQ=" << order.RemainingQuantity << "\t TQ=" << order.TotalQuantity << "\t "
-                        << (order.Type == OrderType::LIMIT ? "LIMIT \t" : "MARKET\t") << std::endl;
+                        << (static_cast<double>(order.Price) / 100.0) << "\t RQ=" << order.RemainingQuantity << "\t TQ="
+                        << order.TotalQuantity << "\t " << (order.Type == OrderType::LIMIT ? "LIM " : "MKT ")
+                        << "\t OLD=" << order.NextOlderOrderIndexAtLevel << "\t NEW=" << order.NextNewerOrderIndexAtLevel
+                        << std::endl;
                 }
             }
-            std::cout << std::endl << std::endl;*/
+            std::cout << std::endl << std::endl;
+
+            const PriceLevelCollection& askCol = Engine.GetAskPriceLevelCollection();
+            std::cout << std::endl << "===================================   ASKS   ======================================" << std::endl;
+
+            for (int i = 0; i <= askCol.MaxIndex(); i++) {
+                auto level = askCol.LevelAtIndex(i);
+                if (!level.IsNull())
+                    std::cout << level.Price << "\t QA=" << level.QuantityAvailable << "\t OC=" << level.OrderCount
+                        << "\t OLD=" << level.OldestOrderIndex << "\t NEW=" << level.NewestOrderIndex << "\t NHI="
+                        << level.NextHigherLevelIndex << "\t NLO=" << level.NextLowerLevelIndex << std::endl;
+            }
+            std::cout << std::endl << std::endl;
+
+            const PriceLevelCollection& bidCol = Engine.GetAskPriceLevelCollection();
+            std::cout << std::endl << "===================================   BIDS   ======================================" << std::endl;
+
+            for (int i = 0; i <= bidCol.MaxIndex(); i++) {
+                auto level = bidCol.LevelAtIndex(i);
+                if (!level.IsNull())
+                    std::cout << level.Price << "\t QA=" << level.QuantityAvailable << "\t OC=" << level.OrderCount
+                        << "\t OLD=" << level.OldestOrderIndex << "\t NEW=" << level.NewestOrderIndex << "\t NHI="
+                        << level.NextHigherLevelIndex << "\t NLO=" << level.NextLowerLevelIndex << std::endl;
+            }
+            std::cout << std::endl << std::endl;
         }
     }
 }
@@ -142,7 +169,7 @@ void Program::RunWithListener(const std::atomic<bool>& stopRequest)
     std::cout << "===========================================================================" << std::endl;
 
     ShouldHandleNotifications = true;
-    auto* newOrders = new Order[1024];
+    std::vector<Order> newOrders(1024);
     int lastOrderIndex = -1;
 
     while (!stopRequest)
@@ -173,8 +200,6 @@ void Program::RunWithListener(const std::atomic<bool>& stopRequest)
             throw;
         }
     }
-
-    delete[] newOrders;
 }
 
 void Program::ProcessAndSend(const std::string& message, Order& newOrder)
@@ -213,7 +238,7 @@ void Program::ProcessAndSend(const std::string& message, Order& newOrder)
 
             if (endPosition != std::string::npos)
             {
-                value = message.substr(position, endPosition - position - 1);
+                value = message.substr(position, endPosition - position);
                 std::from_chars_result result;
 
                 switch (fieldNumber)
@@ -339,7 +364,7 @@ OrderStatus Program::SubmitOrder(Order& newOrder, const char requestType)
     return status;
 }
 
-void Program::SendNotification(long accountId, long orderId, OrderStatus status, const std::string& message) const
+void Program::SendNotification(const FillResults& results) const
 {
     if (ShouldHandleNotifications)
     {
@@ -349,15 +374,17 @@ void Program::SendNotification(long accountId, long orderId, OrderStatus status,
         long timestamp = epoch_millis;
 
         // Submits a message to the NamedPipe stream (to client)
-        // <ACCT-ID>|<ORDER-ID>|<STATUS>|<TIMESTAMP>|<DETAIL-MESSAGE>
-        // 99999|12345678|4|1236417823646|Filled Buy order with 400 at $14.55
+        // <ACCT-ID>|<ORDER-ID>|<FILL-QTY>|<PRICE>|<STATUS>|<TIMESTAMP>|<DETAIL-MESSAGE>
+        // 99999|1234567890|10|4250|4|1236417823646|Filled Buy order with 400 at $14.55
 
         if (!std::filesystem::exists(LobClientFifo))
             mkfifo(LobClientFifo, 0666);
 
         {
             std::ostringstream oss;
-            oss << accountId << '|' << orderId << '|' << status << '|' << timestamp << '|' << message;
+            oss << results.AccountId << '|' << results.OrderId << '|' << results.FilledQuantity
+                << '|' << results.FillPrice << '|' << results.Status
+                << '|' << timestamp << '|' << results.Message;
 
             std::ofstream outStream(LobClientFifo);
             outStream << oss.str() << std::endl;
@@ -366,8 +393,9 @@ void Program::SendNotification(long accountId, long orderId, OrderStatus status,
     }
     else
     {
-        std::cout << "  ** NOTIFY ----> AC=" << accountId << ", ID=" << orderId <<
-            ", ST=" << getStatusText(status) << ": " << message << std::endl;
+        std::cout << "  ** NOTIFY ---->  AC=" << results.AccountId << ", ID=" << results.OrderId <<
+            ", ST=" << getStatusText(results.Status) << ", FP=$" << results.FillPrice <<
+            ", FQ=" << results.FilledQuantity << " : " << results.Message << std::endl;
     }
 }
 

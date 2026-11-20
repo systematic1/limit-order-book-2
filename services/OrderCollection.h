@@ -32,10 +32,9 @@ public:
     const Order& OrderAtIndex(int index) const;
     int FindOrderIndex(long orderId) const;
     Order& GetOrder(long orderId);
-    int AddOrder(const Order& order, PriceLevel& priceLevel);
+    int AddOrder(Order& order, PriceLevel& priceLevel);
     bool RemoveOrder(const Order& order, PriceLevel& priceLevel);
-    Order& FindBestAtPriceLevel(PriceLevel& nextLevel, PriceLevelCollection& levels,
-        OrderSide matchSide);
+    int FindIndexBestAtPriceLevel(const PriceLevel& nextLevel) const;
 };
 
 #endif //LIMITORDERBOOK2_ORDERCOLLECTION_H

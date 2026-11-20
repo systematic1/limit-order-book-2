@@ -11,6 +11,7 @@
 
 class PriceLevelCollection {
 private:
+    // std::map<long, PriceLevel>
     int Capacity;
     int CapacityMask;
     std::vector<PriceLevel> Levels;
@@ -24,7 +25,8 @@ private:
 public:
     PriceLevelCollection(int capacityPowerOf2);
 
-    int Length() const;
+    int MaxIndex() const;
+    const PriceLevel& LevelAtIndex(int index) const;
     int FindLevelIndex(long price) const;
     PriceLevel& GetPriceLevelByPrice(long price);
     PriceLevel& GetPriceLevelByIndex(int index);

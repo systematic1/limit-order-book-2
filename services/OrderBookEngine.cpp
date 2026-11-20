@@ -3,22 +3,21 @@
 //
 
 #include "OrderBookEngine.h"
-
-#include <filesystem>
-
 #include "../models/Enums.h"
 
 #include <iostream>
 #include <ostream>
 #include <sstream>
 #include <utility>
+#include <filesystem>
+#include <chrono>
 
 OrderBookEngine::OrderBookEngine() : Orders(0), AskPriceLevels(0), BidPriceLevels(0)
 {
 }
 
 OrderBookEngine::OrderBookEngine(const int orderCapacity, const int priceLevelCapacity,
-                                 std::function<void(long, long, OrderStatus, const std::string&)> notifyFunction) :
+                                 std::function<void(const FillResults&)> notifyFunction) :
     Orders(orderCapacity), AskPriceLevels(priceLevelCapacity), BidPriceLevels(priceLevelCapacity),
     NotifyFunction(std::move(notifyFunction))
 {
@@ -26,7 +25,7 @@ OrderBookEngine::OrderBookEngine(const int orderCapacity, const int priceLevelCa
 
 OrderStatus OrderBookEngine::AddOrder(Order& order)
 {
-    PriceLevel priceLevel = NullPriceLevel;
+    PriceLevel& priceLevel = NullPriceLevel;
     int levelIndex;
     int quantityFilled = 0;
     bool wasFilled = true;
@@ -52,7 +51,7 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
             priceLevel = AskPriceLevels.GetPriceLevelByPrice(price);
             if (priceLevel.IsNull())
             {
-                levelIndex = AskPriceLevels.GetNextLowerPriceLevel(price);
+                levelIndex = AskPriceLevels.GetNextHigherPriceLevel(price);
                 if (levelIndex == -1)   // If no more orders are available, jump out of loop here
                     break;
 
@@ -77,7 +76,7 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
             priceLevel = BidPriceLevels.GetPriceLevelByPrice(price);
             if (priceLevel.IsNull())
             {
-                levelIndex = BidPriceLevels.GetNextHigherPriceLevel(price);
+                levelIndex = BidPriceLevels.GetNextLowerPriceLevel(price);
                 if (levelIndex == -1)  // If no more orders are available, jump out of loop here
                     break;
 
@@ -113,12 +112,12 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
 
 OrderStatus OrderBookEngine::CancelOrder(long orderId)
 {
-    Order storedOrder = Orders.GetOrder(orderId);
+    Order& storedOrder = Orders.GetOrder(orderId);
     if (storedOrder.IsNull())
         return OrderStatus::NOT_FOUND;
 
     // Find the price level and adjust the quantity remaining and order count
-    PriceLevel priceLevel = NullPriceLevel;
+    PriceLevel& priceLevel = NullPriceLevel;
     if (storedOrder.Side == OrderSide::BUY)
         priceLevel = BidPriceLevels.GetPriceLevelByPrice(storedOrder.Price);
     else
@@ -143,7 +142,7 @@ void OrderBookEngine::NotifyOrderFillStatus(const FillResults& fillResults) cons
 {
     try
     {
-        NotifyFunction(99999, fillResults.OrderId, fillResults.Status, fillResults.Message);
+        NotifyFunction(fillResults);
     }
     catch (std::exception& e)
     {
@@ -154,13 +153,10 @@ void OrderBookEngine::NotifyOrderFillStatus(const FillResults& fillResults) cons
 OrderStatus OrderBookEngine::ValidateOrder(const Order& order) const
 {
     // Validate - Basic
-    if (order.RemainingQuantity < 0)
-        return OrderStatus::REJECTED;
-
     if (order.TotalQuantity < order.RemainingQuantity)
         return OrderStatus::REJECTED;
 
-    if (order.TotalQuantity == 0)
+    if (order.TotalQuantity <= 0 || order.RemainingQuantity <= 0)
         return OrderStatus::REJECTED;
 
     if (IsDuplicateOrder(order.OrderId))
@@ -191,14 +187,15 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
     ).count();
 
     // Search the order list for the best available order by time-priority
-    Order matchedOrder = Orders.FindBestAtPriceLevel(priceLevel, priceLevels, matchSide);
-    if (matchedOrder.IsNull())
+    int matchedIndex = Orders.FindIndexBestAtPriceLevel(priceLevel);
+    if (matchedIndex == -1)
         return 0;
 
-    matchRemaining = matchedOrder.RemainingQuantity;
-
+    Order& matchedOrder = Orders.GetOrder(matchedIndex);
     if (!matchedOrder.IsNull())
     {
+        matchRemaining = matchedOrder.RemainingQuantity;
+
         if (matchedOrder.AccountId != order.AccountId && matchedOrder.RemainingQuantity > 0)
         {
             if (matchedOrder.RemainingQuantity >= quantityRemaining)
@@ -216,7 +213,7 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
             {
                 quantityFilled = matchedOrder.RemainingQuantity;
                 quantityRemaining -= quantityFilled;
-                order.RemainingQuantity -= quantityRemaining;
+                order.RemainingQuantity = quantityRemaining;
                 order.Timestamp = epoch_millis;
                 matchedStatus = OrderStatus::PARTIALLY_FILLED;
                 currentStatus = OrderStatus::FILLED;
@@ -232,7 +229,8 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
                 priceLevel.Price,
                 0,
                 std::string(),
-                matchedStatus
+                matchedStatus,
+                matchedOrder.AccountId
             );
             SetStatusMessage(matchResults);
             NotifyOrderFillStatus(matchResults);
@@ -245,7 +243,8 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
                 priceLevel.Price,
                 0,
                 std::string(),
-                currentStatus
+                currentStatus,
+                order.AccountId
             );
             SetStatusMessage(currentResults);
             NotifyOrderFillStatus(matchResults);
@@ -258,9 +257,6 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
             // If either order was completely filled, it needs to be removed from the orderbook
             if (matchedOrder.RemainingQuantity == 0)
                 Orders.RemoveOrder(matchedOrder, priceLevel);
-
-            if (order.RemainingQuantity == 0)
-                Orders.RemoveOrder(order, priceLevel);
         }
     }
 
@@ -269,7 +265,7 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
 
 bool OrderBookEngine::AddOrderToBook(Order& order)
 {
-    PriceLevel priceLevel = NullPriceLevel;
+    PriceLevel& priceLevel = NullPriceLevel;
     int levelIndex;
 
     if (order.Side == OrderSide::BUY)
@@ -302,6 +298,9 @@ bool OrderBookEngine::AddOrderToBook(Order& order)
             order.PriceLevelIndex = levelIndex;
         }
     }
+
+    if (priceLevel.IsNull())
+        return false;
 
     priceLevel.QuantityAvailable += order.RemainingQuantity;
     priceLevel.OrderCount++;

@@ -11,6 +11,8 @@
 #include "../models/FillResults.h"
 #include "OrderCollection.h"
 
+#include <functional>
+
 class OrderBookEngine
 {
 private:
@@ -20,11 +22,11 @@ private:
 
 public:
     OrderBookEngine();
-    OrderBookEngine(int orderCapacity, int priceLevelCapacity, std::function<void(long, long, OrderStatus, const std::string&)>);
+    OrderBookEngine(int orderCapacity, int priceLevelCapacity, std::function<void(const FillResults&)>);
     OrderStatus AddOrder(Order& order);
     OrderStatus CancelOrder(long orderId);
     void NotifyOrderFillStatus(const FillResults& fillResults) const;
-    std::function<void(long, long, OrderStatus, const std::string&)> NotifyFunction;
+    std::function<void(const FillResults&)> NotifyFunction;
 
     const OrderCollection& GetOrderCollection() const;
     const PriceLevelCollection& GetAskPriceLevelCollection() const;
