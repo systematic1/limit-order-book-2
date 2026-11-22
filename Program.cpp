@@ -58,7 +58,7 @@ void Program::RunTest(const std::atomic<bool>& stopRequest)
     std::vector<int> orderNumbers;
     const int numberOfOrders = 500;
     const long highPrice = 1200L;
-    const long lowPrice = 1150L;
+    const long lowPrice = 1190L;
     const int lowQuantity = 1;
     const int highQuantity = 50;
 

@@ -80,7 +80,7 @@ int PriceLevelCollection::GetNextHigherPriceLevel(const long price) const
 
     for (int index = 0; index <= HighestIndex; index++)
     {
-        if (!Available[index] && Levels[index].Price > price)
+        if (!Available[index] && Levels[index].Price > price && Levels[index].Price < nearestHigherPrice)
         {
             if (Levels[index].Price < nearestHigherPrice)
             {
@@ -100,7 +100,7 @@ int PriceLevelCollection::GetNextLowerPriceLevel(const long price) const
 
     for (int index = 0; index <= HighestIndex; index++)
     {
-        if (!Available[index] && Levels[index].Price < price)
+        if (!Available[index] && Levels[index].Price < price && Levels[index].Price > nearestLowerPrice)
         {
             if (Levels[index].Price > nearestLowerPrice)
             {
@@ -119,9 +119,10 @@ int PriceLevelCollection::AddPriceLevel(const long price, const OrderSide side)
     {
         // 1. Find the price level in the list that has the next higher price above this order [HigherLevel]
         int nextHigherIndex = GetNextHigherPriceLevel(price);
+        int nextLowerIndex = GetNextLowerPriceLevel(price);
 
         // 2. Save the price level index from HigherLevel.NextLowerIndex [LowerLevel]
-        int higherLevel_LowerIndex = (nextHigherIndex == -1 ? -1 : Levels[nextHigherIndex].NextLowerLevelIndex);
+        //int higherLevel_LowerIndex = (nextHigherIndex == -1 ? -1 : Levels[nextHigherIndex].NextLowerLevelIndex);
 
         // 3. Insert a new price level [NewLevel] and link HigherLevel.NextLowerIndex to its index
         int loopCount = 0;
@@ -143,13 +144,16 @@ int PriceLevelCollection::AddPriceLevel(const long price, const OrderSide side)
 
             // 5. Link NewLevel.NextHigherIndex to HigherLevel, and link NewLevel.NextLowerIndex to LowerLevel
             // Link LowerLevel.NextHigherIndex to NewLevel
-            Levels[LastIndex].NextLowerLevelIndex = higherLevel_LowerIndex;
+            Levels[LastIndex].NextLowerLevelIndex = nextLowerIndex; // higherLevel_LowerIndex;
             Levels[LastIndex].NextHigherLevelIndex = nextHigherIndex;
 
-            if (nextHigherIndex > -1)
+            if (nextHigherIndex != -1)
                 Levels[nextHigherIndex].NextLowerLevelIndex = LastIndex;
-            if (higherLevel_LowerIndex > -1)
-                Levels[higherLevel_LowerIndex].NextHigherLevelIndex = LastIndex;
+            if (nextLowerIndex != -1)
+                Levels[nextLowerIndex].NextHigherLevelIndex = LastIndex;
+
+            //if (higherLevel_LowerIndex > -1)
+            //    Levels[higherLevel_LowerIndex].NextHigherLevelIndex = LastIndex;
 
             // 6. Mark NewLevel's AvailableIndex as 0 and increment CountInUse
             Available[LastIndex] = false;

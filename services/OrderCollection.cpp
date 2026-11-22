@@ -160,7 +160,7 @@ int OrderCollection::FindIndexBestAtPriceLevel(const PriceLevel& atLevel) const
         if (atLevel.OldestOrderIndex <= HighestIndex && !Available[atLevel.OldestOrderIndex])
             return atLevel.OldestOrderIndex;
     }
-    else if (atLevel.OrderCount == 1 && atLevel.NewestOrderIndex != -1)
+    else if (atLevel.Price > -1 && atLevel.OrderCount == 1 && atLevel.NewestOrderIndex != -1)
         return atLevel.NewestOrderIndex;
 
     return -1;

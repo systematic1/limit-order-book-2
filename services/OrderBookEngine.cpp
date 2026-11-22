@@ -61,6 +61,9 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
             // Find a matching order and fill it
             quantityFilled = FillMatchingOrder(priceLevel, order);
             wasFilled = (quantityFilled > 0);
+
+            if (priceLevel.IsEmpty())
+                AskPriceLevels.RemovePriceLevel(priceLevel.Price);
         }
     }
     else    // Sell OrderSide
@@ -71,7 +74,7 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
             price = BidPriceLevels.GetPriceLevelByIndex(levelIndex).Price;
 
         // We keep looking for more orders to fill until our order is completed
-        while (order.RemainingQuantity > 0 && wasFilled)                                        // ---
+        while (order.RemainingQuantity > 0 && wasFilled)
         {
             priceLevel = BidPriceLevels.GetPriceLevelByPrice(price);
             if (priceLevel.IsNull())
@@ -81,12 +84,14 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
                     break;
 
                 priceLevel = BidPriceLevels.GetPriceLevelByIndex(levelIndex);
-                order.PriceLevelIndex = levelIndex;
             }
 
             // Find a matching order and fill it
             quantityFilled = FillMatchingOrder(priceLevel, order);
             wasFilled = (quantityFilled > 0);                                                   // ---
+
+            if (priceLevel.IsEmpty())
+                BidPriceLevels.RemovePriceLevel(priceLevel.Price);
         }
     }
 
@@ -116,18 +121,21 @@ OrderStatus OrderBookEngine::CancelOrder(long orderId)
     if (storedOrder.IsNull())
         return OrderStatus::NOT_FOUND;
 
+    PriceLevelCollection& priceLevelsSide = BidPriceLevels;
+    if (storedOrder.Side == OrderSide::SELL)
+        priceLevelsSide = AskPriceLevels;
+
     // Find the price level and adjust the quantity remaining and order count
-    PriceLevel& priceLevel = NullPriceLevel;
-    if (storedOrder.Side == OrderSide::BUY)
-        priceLevel = BidPriceLevels.GetPriceLevelByPrice(storedOrder.Price);
-    else
-        priceLevel = AskPriceLevels.GetPriceLevelByPrice(storedOrder.Price);
+    PriceLevel& priceLevel = priceLevelsSide.GetPriceLevelByPrice(storedOrder.Price);;
 
     if (priceLevel.IsNull())
         return OrderStatus::NOT_FOUND;
 
     priceLevel.QuantityAvailable -= storedOrder.RemainingQuantity;
     priceLevel.OrderCount--;
+
+    if (priceLevel.OrderCount <= 0)
+        priceLevelsSide.RemovePriceLevel(storedOrder.Price);
 
     // Remove the order from the order list
     storedOrder.PriceLevelIndex = -1;
