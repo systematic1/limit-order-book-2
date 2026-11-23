@@ -33,6 +33,8 @@ public:
     const PriceLevelCollection& GetBidPriceLevelCollection() const;
 
 private:
+    PriceLevelCollection& GetSideLevelCollection(OrderSide side);
+    OrderStatus CancelOrderOnSide(PriceLevelCollection& side, Order& order);
     OrderStatus ValidateOrder(const Order& order) const;
     bool DoesOrderViolateRisk(const Order& order) const;
     int FillMatchingOrder(PriceLevel& priceLevel, Order& order);

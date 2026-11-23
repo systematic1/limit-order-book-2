@@ -125,8 +125,8 @@ void Program::RunTest(const std::atomic<bool>& stopRequest)
             std::cout << std::endl << "=============================== ORDER COLLECTION =================================" << std::endl;
 
             for (int i = 0; i <= orderCol.MaxIndex(); i++) {
-                auto order = orderCol.OrderAtIndex(i);
-                if (!order.IsNull()) {
+                if (orderCol.IsIndexInUse(i)) {
+                    const auto order = orderCol.OrderAtIndex(i);
                     std::cout << order.OrderId << "\t " << (order.Side == OrderSide::BUY ? "BUY \t$" : "SELL\t$")
                         << (static_cast<double>(order.Price) / 100.0) << "\t RQ=" << order.RemainingQuantity << "\t TQ="
                         << order.TotalQuantity << "\t " << (order.Type == OrderType::LIMIT ? "LIM " : "MKT ")
@@ -140,11 +140,13 @@ void Program::RunTest(const std::atomic<bool>& stopRequest)
             std::cout << std::endl << "===================================   ASKS   ======================================" << std::endl;
 
             for (int i = 0; i <= askCol.MaxIndex(); i++) {
-                auto level = askCol.LevelAtIndex(i);
-                if (!level.IsNull())
+                if (askCol.IsIndexInUse(i)) {
+                    const auto level = askCol.LevelAtIndex(i);
                     std::cout << level.Price << "\t QA=" << level.QuantityAvailable << "\t OC=" << level.OrderCount
                         << "\t OLD=" << level.OldestOrderIndex << "\t NEW=" << level.NewestOrderIndex << "\t NHI="
                         << level.NextHigherLevelIndex << "\t NLO=" << level.NextLowerLevelIndex << std::endl;
+
+                }
             }
             std::cout << std::endl << std::endl;
 
@@ -152,11 +154,12 @@ void Program::RunTest(const std::atomic<bool>& stopRequest)
             std::cout << std::endl << "===================================   BIDS   ======================================" << std::endl;
 
             for (int i = 0; i <= bidCol.MaxIndex(); i++) {
-                auto level = bidCol.LevelAtIndex(i);
-                if (!level.IsNull())
+                if (bidCol.IsIndexInUse(i)) {
+                    const auto level = bidCol.LevelAtIndex(i);
                     std::cout << level.Price << "\t QA=" << level.QuantityAvailable << "\t OC=" << level.OrderCount
                         << "\t OLD=" << level.OldestOrderIndex << "\t NEW=" << level.NewestOrderIndex << "\t NHI="
                         << level.NextHigherLevelIndex << "\t NLO=" << level.NextLowerLevelIndex << std::endl;
+                }
             }
             std::cout << std::endl << std::endl;
         }

@@ -25,7 +25,6 @@ OrderBookEngine::OrderBookEngine(const int orderCapacity, const int priceLevelCa
 
 OrderStatus OrderBookEngine::AddOrder(Order& order)
 {
-    PriceLevel& priceLevel = NullPriceLevel;
     int levelIndex;
     int quantityFilled = 0;
     bool wasFilled = true;
@@ -43,22 +42,21 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
         // If market order, find the lowest ask price available to start
         levelIndex = AskPriceLevels.GetNextHigherPriceLevel(LONG_MIN);
         if (levelIndex != -1)
-            price = AskPriceLevels.GetPriceLevelByIndex(levelIndex).Price;
+            price = AskPriceLevels.GetLevelByIndex(levelIndex).Price;
 
         // We keep looking for more orders to fill until our order is completed
         while (order.RemainingQuantity > 0 && wasFilled)
         {
-            priceLevel = AskPriceLevels.GetPriceLevelByPrice(price);
-            if (priceLevel.IsNull())
+            int index = AskPriceLevels.FindLevelIndexForPrice(price);
+            if (index == -1)
             {
                 levelIndex = AskPriceLevels.GetNextHigherPriceLevel(price);
                 if (levelIndex == -1)   // If no more orders are available, jump out of loop here
                     break;
-
-                priceLevel = AskPriceLevels.GetPriceLevelByIndex(levelIndex);
             }
 
             // Find a matching order and fill it
+            PriceLevel& priceLevel = AskPriceLevels.GetLevelByIndex(levelIndex);
             quantityFilled = FillMatchingOrder(priceLevel, order);
             wasFilled = (quantityFilled > 0);
 
@@ -71,22 +69,21 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
         // If market order, find the highest bid price available to start
         levelIndex = BidPriceLevels.GetNextLowerPriceLevel(LONG_MAX);
         if (levelIndex != -1)
-            price = BidPriceLevels.GetPriceLevelByIndex(levelIndex).Price;
+            price = BidPriceLevels.GetLevelByIndex(levelIndex).Price;
 
         // We keep looking for more orders to fill until our order is completed
         while (order.RemainingQuantity > 0 && wasFilled)
         {
-            priceLevel = BidPriceLevels.GetPriceLevelByPrice(price);
-            if (priceLevel.IsNull())
+            int index = BidPriceLevels.FindLevelIndexForPrice(price);
+            if (index == -1)
             {
                 levelIndex = BidPriceLevels.GetNextLowerPriceLevel(price);
                 if (levelIndex == -1)  // If no more orders are available, jump out of loop here
                     break;
-
-                priceLevel = BidPriceLevels.GetPriceLevelByIndex(levelIndex);
             }
 
             // Find a matching order and fill it
+            PriceLevel& priceLevel = BidPriceLevels.GetLevelByIndex(levelIndex);
             quantityFilled = FillMatchingOrder(priceLevel, order);
             wasFilled = (quantityFilled > 0);                                                   // ---
 
@@ -115,27 +112,27 @@ OrderStatus OrderBookEngine::AddOrder(Order& order)
     return OrderStatus::REJECTED;
 }
 
-OrderStatus OrderBookEngine::CancelOrder(long orderId)
+OrderStatus OrderBookEngine::CancelOrder(const long orderId)
 {
-    Order& storedOrder = Orders.GetOrder(orderId);
-    if (storedOrder.IsNull())
+    int orderIndex = Orders.FindOrderIndex(orderId);
+    if (orderIndex == -1)
         return OrderStatus::NOT_FOUND;
 
-    PriceLevelCollection& priceLevelsSide = BidPriceLevels;
-    if (storedOrder.Side == OrderSide::SELL)
-        priceLevelsSide = AskPriceLevels;
+    Order& storedOrder = Orders.GetOrderByIndex(orderIndex);
+    PriceLevelCollection& side = GetSideLevelCollection(storedOrder.Side);
 
     // Find the price level and adjust the quantity remaining and order count
-    PriceLevel& priceLevel = priceLevelsSide.GetPriceLevelByPrice(storedOrder.Price);;
-
-    if (priceLevel.IsNull())
+    int levelIndex = side.FindLevelIndexForPrice(storedOrder.Price);
+    if (levelIndex == -1)
         return OrderStatus::NOT_FOUND;
 
+    PriceLevel& priceLevel = side.GetLevelByIndex(levelIndex);
     priceLevel.QuantityAvailable -= storedOrder.RemainingQuantity;
     priceLevel.OrderCount--;
 
+    // If the price level is emptied, remove it
     if (priceLevel.OrderCount <= 0)
-        priceLevelsSide.RemovePriceLevel(storedOrder.Price);
+        side.RemovePriceLevel(storedOrder.Price);
 
     // Remove the order from the order list
     storedOrder.PriceLevelIndex = -1;
@@ -144,6 +141,14 @@ OrderStatus OrderBookEngine::CancelOrder(long orderId)
         return OrderStatus::REJECTED;
 
     return OrderStatus::CANCELLED;
+}
+
+PriceLevelCollection& OrderBookEngine::GetSideLevelCollection(OrderSide side)
+{
+    if (side == OrderSide::BUY)
+        return BidPriceLevels;
+    else
+        return AskPriceLevels;
 }
 
 void OrderBookEngine::NotifyOrderFillStatus(const FillResults& fillResults) const
@@ -184,7 +189,8 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
     OrderSide matchSide = (order.Side == OrderSide::SELL ? OrderSide::BUY : OrderSide::SELL);
     OrderStatus matchedStatus = OrderStatus::UNKNOWN;
     OrderStatus currentStatus = OrderStatus::UNKNOWN;
-    PriceLevelCollection& priceLevels = (order.Side == OrderSide::SELL ? BidPriceLevels : AskPriceLevels);
+    PriceLevelCollection& priceLevels = GetSideLevelCollection(order.Side);
+
     int quantityRemaining = order.RemainingQuantity;
     int quantityFilled = 0;
     int matchRemaining = 0;
@@ -199,7 +205,7 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
     if (matchedIndex == -1)
         return 0;
 
-    Order& matchedOrder = Orders.GetOrder(matchedIndex);
+    Order& matchedOrder = Orders.GetOrderByIndex(matchedIndex);
     if (!matchedOrder.IsNull())
     {
         matchRemaining = matchedOrder.RemainingQuantity;
@@ -255,7 +261,7 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
                 order.AccountId
             );
             SetStatusMessage(currentResults);
-            NotifyOrderFillStatus(matchResults);
+            NotifyOrderFillStatus(currentResults);
 
             // Update price level data
             priceLevel.QuantityAvailable -= quantityFilled;
@@ -273,43 +279,18 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
 
 bool OrderBookEngine::AddOrderToBook(Order& order)
 {
-    PriceLevel& priceLevel = NullPriceLevel;
-    int levelIndex;
+    PriceLevelCollection& levelSide = GetSideLevelCollection(order.Side);
+    int levelIndex = levelSide.FindLevelIndexForPrice(order.Price);
 
-    if (order.Side == OrderSide::BUY)
-    {
-        priceLevel = BidPriceLevels.GetPriceLevelByPrice(order.Price);
-
-        // If the price level doesn't exist, add it to the price levels
-        if (priceLevel.IsNull())
-        {
-            levelIndex = BidPriceLevels.AddPriceLevel(order.Price, order.Side);
-            if (levelIndex == -1)
-                return false;
-
-            priceLevel = BidPriceLevels.GetPriceLevelByIndex(levelIndex);
-            order.PriceLevelIndex = levelIndex;
-        }
-    }
-    else       // Sell OrderSide
-    {
-        priceLevel = AskPriceLevels.GetPriceLevelByPrice(order.Price);
-
-        // If the price level doesn't exist, add it to the price levels
-        if (priceLevel.IsNull())
-        {
-            levelIndex = AskPriceLevels.AddPriceLevel(order.Price, order.Side);
-            if (levelIndex == -1)
-                return false;
-
-            priceLevel = AskPriceLevels.GetPriceLevelByIndex(levelIndex);
-            order.PriceLevelIndex = levelIndex;
-        }
-    }
-
-    if (priceLevel.IsNull())
+    // If the price level doesn't exist, add it to the price levels
+    if (levelIndex == -1)
+        levelIndex = levelSide.AddPriceLevel(order.Price, order.Side);
+    if (levelIndex == -1)
         return false;
 
+    order.PriceLevelIndex = levelIndex;
+
+    PriceLevel& priceLevel = levelSide.GetLevelByIndex(levelIndex);
     priceLevel.QuantityAvailable += order.RemainingQuantity;
     priceLevel.OrderCount++;
 

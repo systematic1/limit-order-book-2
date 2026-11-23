@@ -29,10 +29,11 @@ public:
     OrderCollection(int capacityPowerOf2);
 
     int MaxIndex() const;
+    bool IsIndexInUse(int index) const;
     const Order& OrderAtIndex(int index) const;
     int FindOrderIndex(long orderId) const;
-    Order& GetOrder(long orderId);
-    int AddOrder(Order& order, PriceLevel& priceLevel);
+    Order& GetOrderByIndex(int index);
+    int AddOrder(const Order& order, PriceLevel& priceLevel);
     bool RemoveOrder(const Order& order, PriceLevel& priceLevel);
     int FindIndexBestAtPriceLevel(const PriceLevel& nextLevel) const;
 };

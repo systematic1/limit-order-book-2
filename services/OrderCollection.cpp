@@ -32,12 +32,20 @@ int OrderCollection::MaxIndex() const
     return HighestIndex;
 }
 
-const Order& OrderCollection::OrderAtIndex(int index) const
+const Order& OrderCollection::OrderAtIndex(const int index) const
 {
-    if (index >= 0 && index <= HighestIndex && !Available[index])
+    if (IsIndexInUse(index))
         return Orders[index];
 
-    return NullOrder;
+    throw std::invalid_argument("OrderCollection::OrderAtIndex - Invalid index");
+}
+
+bool OrderCollection::IsIndexInUse(const int index) const
+{
+    if (index >= 0 && index <= HighestIndex)
+        return !Available[index];
+
+    throw std::invalid_argument("OrderCollection::IsIndexInUse - Invalid index");
 }
 
 int OrderCollection::FindOrderIndex(const long orderId) const
@@ -54,16 +62,15 @@ int OrderCollection::FindOrderIndex(const long orderId) const
     return -1;
 }
 
-Order& OrderCollection::GetOrder(long orderId)
+Order& OrderCollection::GetOrderByIndex(const int index)
 {
-    int index = FindOrderIndex(orderId);
-    if (index == -1)
-        return NullOrder;
+    if (IsIndexInUse(index))
+        return Orders[index];
 
-    return Orders[index];
+    throw std::invalid_argument("OrderCollection::GetOrderByIndex - Invalid index");
 }
 
-int OrderCollection::AddOrder(Order& order, PriceLevel& priceLevel)
+int OrderCollection::AddOrder(const Order& order, PriceLevel& priceLevel)
 {
     if (CountInUse < Capacity)
     {

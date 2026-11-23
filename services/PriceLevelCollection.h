@@ -26,10 +26,10 @@ public:
     PriceLevelCollection(int capacityPowerOf2);
 
     int MaxIndex() const;
+    bool IsIndexInUse(int index) const;
     const PriceLevel& LevelAtIndex(int index) const;
-    int FindLevelIndex(long price) const;
-    PriceLevel& GetPriceLevelByPrice(long price);
-    PriceLevel& GetPriceLevelByIndex(int index);
+    int FindLevelIndexForPrice(long price) const;
+    PriceLevel& GetLevelByIndex(int index);
     int GetNextHigherPriceLevel(long price) const;
     int GetNextLowerPriceLevel(long price) const;
     int AddPriceLevel(long price, OrderSide side);

@@ -34,15 +34,23 @@ int PriceLevelCollection::MaxIndex() const
     return HighestIndex;
 }
 
-const PriceLevel& PriceLevelCollection::LevelAtIndex(int index) const
+bool PriceLevelCollection::IsIndexInUse(const int index) const
 {
-    if (index >= 0 && index <= HighestIndex && !Available[index])
-        return Levels[index];
+    if (index >= 0 && index <= HighestIndex)
+        return !Available[index];
 
-    return NullPriceLevel;
+    throw std::invalid_argument("PriceLevelCollection::IsIndexInUse - Invalid index");
 }
 
-int PriceLevelCollection::FindLevelIndex(const long price) const
+const PriceLevel& PriceLevelCollection::LevelAtIndex(const int index) const
+{
+    if (IsIndexInUse(index))
+        return Levels[index];
+
+    throw std::invalid_argument("PriceLevelCollection::LevelAtIndex - Invalid index.");
+}
+
+int PriceLevelCollection::FindLevelIndexForPrice(const long price) const
 {
     if (CountInUse > 0)
     {
@@ -56,21 +64,12 @@ int PriceLevelCollection::FindLevelIndex(const long price) const
     return -1;
 }
 
-PriceLevel& PriceLevelCollection::GetPriceLevelByPrice(const long price)
+PriceLevel& PriceLevelCollection::GetLevelByIndex(const int index)
 {
-    const int index = FindLevelIndex(price);
-    if (index == -1)
-        return NullPriceLevel;
-
-    return Levels[index];
-}
-
-PriceLevel& PriceLevelCollection::GetPriceLevelByIndex(const int index)
-{
-    if (index >= 0 && index <= HighestIndex && !Available[index])
+    if (IsIndexInUse(index))
         return Levels[index];
 
-    return NullPriceLevel;
+    throw std::invalid_argument("PriceLevelCollection::GetLevelByIndex - Invalid index.");
 }
 
 int PriceLevelCollection::GetNextHigherPriceLevel(const long price) const
@@ -174,7 +173,7 @@ bool PriceLevelCollection::RemovePriceLevel(long price)
     if (CountInUse > 0)
     {
         // 1. Find the price level for the given price [CurrentLevel]; return false if it doesn't exist
-        int index = FindLevelIndex(price);
+        int index = FindLevelIndexForPrice(price);
         if (index != -1)
         {
             // 2. Link the HigherLevel.NextLowerIndex to LowerLevel index
