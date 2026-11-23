@@ -30,6 +30,7 @@ private:
     std::random_device RandomDevice;
 
     int FindVectorData(const std::vector<int>& vec, int value) const;
+    void PostResultsToLog(const FillResults& results) const;
 };
 
 #endif //LIMITORDERBOOK2_PROGRAM_H

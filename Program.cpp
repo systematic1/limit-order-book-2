@@ -393,6 +393,8 @@ void Program::SendNotification(const FillResults& results) const
             outStream << oss.str() << std::endl;
             outStream.flush();
         }
+
+        PostResultsToLog(results);
     }
     else
     {
@@ -400,6 +402,14 @@ void Program::SendNotification(const FillResults& results) const
             ", ST=" << getStatusText(results.Status) << ", FP=$" << results.FillPrice <<
             ", FQ=" << results.FilledQuantity << " : " << results.Message << std::endl;
     }
+}
+
+void Program::PostResultsToLog(const FillResults &results) const
+{
+    // TO DO...
+    // This would queue up the notification messages received from the engine to be
+    //  posted to a log (file or DB) somewhere. It would need to be asynchronous to
+    //  ensure it doesn't add any performance drag to the application.
 }
 
 int Program::FindVectorData(const std::vector<int>& vec, int value) const
