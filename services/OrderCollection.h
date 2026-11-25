@@ -22,9 +22,6 @@ private:
     int LastIndex;
     int HighestIndex;
 
-    Order NullOrder = Order(-1, -1L, OrderSide::BUY, OrderType::MARKET, 0,
-        0, -1, 0L, TimeToLive::GTC, -1L, -1L);
-
 public:
     OrderCollection(int capacityPowerOf2);
 

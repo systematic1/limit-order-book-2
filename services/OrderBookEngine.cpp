@@ -206,72 +206,71 @@ int OrderBookEngine::FillMatchingOrder(PriceLevel& priceLevel, Order& order)
         return 0;
 
     Order& matchedOrder = Orders.GetOrderByIndex(matchedIndex);
-    if (!matchedOrder.IsNull())
+    matchRemaining = matchedOrder.RemainingQuantity;
+
+    if (matchedOrder.AccountId != order.AccountId && matchedOrder.RemainingQuantity > 0)
     {
-        matchRemaining = matchedOrder.RemainingQuantity;
-
-        if (matchedOrder.AccountId != order.AccountId && matchedOrder.RemainingQuantity > 0)
+        if (matchedOrder.RemainingQuantity >= quantityRemaining)
         {
-            if (matchedOrder.RemainingQuantity >= quantityRemaining)
-            {
-                matchedStatus = (matchedOrder.RemainingQuantity == quantityRemaining ? OrderStatus::FILLED : OrderStatus::PARTIALLY_FILLED);
-                currentStatus = OrderStatus::FILLED;
-                matchedOrder.RemainingQuantity -= quantityRemaining;
-                matchedOrder.Timestamp = epoch_millis;
-                order.Timestamp = matchedOrder.Timestamp;
-                order.RemainingQuantity = 0;
-                quantityFilled = quantityRemaining;
-                quantityRemaining = order.RemainingQuantity;
-            }
-            else       // Not enough to completely fill order
-            {
-                quantityFilled = matchedOrder.RemainingQuantity;
-                quantityRemaining -= quantityFilled;
-                order.RemainingQuantity = quantityRemaining;
-                order.Timestamp = epoch_millis;
-                matchedStatus = OrderStatus::PARTIALLY_FILLED;
-                currentStatus = OrderStatus::FILLED;
-                matchedOrder.Timestamp = order.Timestamp;
-                matchedOrder.RemainingQuantity = 0;
-            }
-
-            FillResults matchResults = FillResults(
-                matchedOrder.OrderId,
-                matchRemaining,
-                quantityFilled,
-                matchedOrder.RemainingQuantity,
-                priceLevel.Price,
-                0,
-                std::string(),
-                matchedStatus,
-                matchedOrder.AccountId
-            );
-            SetStatusMessage(matchResults);
-            NotifyOrderFillStatus(matchResults);
-
-            FillResults currentResults = FillResults(
-                order.OrderId,
-                currentRemaining,
-                quantityFilled,
-                order.RemainingQuantity,
-                priceLevel.Price,
-                0,
-                std::string(),
-                currentStatus,
-                order.AccountId
-            );
-            SetStatusMessage(currentResults);
-            NotifyOrderFillStatus(currentResults);
-
-            // Update price level data
-            priceLevel.QuantityAvailable -= quantityFilled;
-            priceLevel.LastFillQuantity = quantityRemaining;
-            priceLevel.LastFillTimestamp = epoch_millis;
-
-            // If either order was completely filled, it needs to be removed from the orderbook
-            if (matchedOrder.RemainingQuantity == 0)
-                Orders.RemoveOrder(matchedOrder, priceLevel);
+            matchedStatus = (matchedOrder.RemainingQuantity == quantityRemaining ? OrderStatus::FILLED : OrderStatus::PARTIALLY_FILLED);
+            currentStatus = OrderStatus::FILLED;
+            matchedOrder.RemainingQuantity -= quantityRemaining;
+            matchedOrder.Timestamp = epoch_millis;
+            order.Timestamp = matchedOrder.Timestamp;
+            order.RemainingQuantity = 0;
+            quantityFilled = quantityRemaining;
+            quantityRemaining = order.RemainingQuantity;
         }
+        else       // Not enough to completely fill order
+        {
+            quantityFilled = matchedOrder.RemainingQuantity;
+            quantityRemaining -= quantityFilled;
+            order.RemainingQuantity = quantityRemaining;
+            order.Timestamp = epoch_millis;
+            matchedStatus = OrderStatus::PARTIALLY_FILLED;
+            currentStatus = OrderStatus::FILLED;
+            matchedOrder.Timestamp = order.Timestamp;
+            matchedOrder.RemainingQuantity = 0;
+        }
+
+        FillResults matchResults = FillResults(
+            matchedOrder.OrderId,
+            matchedOrder.Side,
+            matchRemaining,
+            quantityFilled,
+            matchedOrder.RemainingQuantity,
+            priceLevel.Price,
+            0,
+            std::string(),
+            matchedStatus,
+            matchedOrder.AccountId
+        );
+        SetStatusMessage(matchResults);
+        NotifyOrderFillStatus(matchResults);
+
+        FillResults currentResults = FillResults(
+            order.OrderId,
+            order.Side,
+            currentRemaining,
+            quantityFilled,
+            order.RemainingQuantity,
+            priceLevel.Price,
+            0,
+            std::string(),
+            currentStatus,
+            order.AccountId
+        );
+        SetStatusMessage(currentResults);
+        NotifyOrderFillStatus(currentResults);
+
+        // Update price level data
+        priceLevel.QuantityAvailable -= quantityFilled;
+        priceLevel.LastFillQuantity = quantityRemaining;
+        priceLevel.LastFillTimestamp = epoch_millis;
+
+        // If either order was completely filled, it needs to be removed from the orderbook
+        if (matchedOrder.RemainingQuantity == 0)
+            Orders.RemoveOrder(matchedOrder, priceLevel);
     }
 
     return quantityFilled;
@@ -302,6 +301,7 @@ bool OrderBookEngine::AddOrderToBook(Order& order)
 
 void OrderBookEngine::SetStatusMessage(FillResults &fillResults)
 {
+    const char* sideName = fillResults.Side == OrderSide::BUY ? "Buy" : "Sell";
     std::ostringstream oss;
 
     switch (fillResults.Status)
@@ -311,43 +311,28 @@ void OrderBookEngine::SetStatusMessage(FillResults &fillResults)
             break;
 
         case OrderStatus::DUPLICATE:
-            oss << "This order (" << fillResults.OrderId << " has already been submitted.";
+            oss << "This order (" << fillResults.OrderId << ") has already been submitted.";
             break;
 
         case OrderStatus::FILLED:
-            if (!fillResults.IsNull())
-            {
-                oss << "Order " << fillResults.OrderId << " has been filled with quantity "
-                    << fillResults.FilledQuantity << " at $"
-                    << static_cast<float>(fillResults.FillPrice) / 100.0;
-            }
-            else
-                oss << "Order " << fillResults.OrderId << " has been filled (no details).";
+            oss << sideName << " Order " << fillResults.OrderId << " has been filled with quantity "
+                << fillResults.FilledQuantity << " at $"
+                << static_cast<float>(fillResults.FillPrice) / 100.0;
             break;
 
         case OrderStatus::NOT_FOUND:
-            oss << "This order (" << fillResults.OrderId << ") is invalid.";
+            oss << "This order (" << fillResults.OrderId << ") is invalid or not found.";
             break;
 
         case OrderStatus::PARTIALLY_FILLED:
-            if (!fillResults.IsNull())
-            {
-                oss << "Order " << fillResults.OrderId << " has been partially filled with quantity "
-                    << fillResults.FilledQuantity << " at $"
-                    << static_cast<float>(fillResults.FillPrice) / 100.0;
-            }
-            else
-                oss << "Order " << fillResults.OrderId << " has been partially filled (no details).";
+            oss << sideName << " Order " << fillResults.OrderId << " has been partially filled with quantity "
+                << fillResults.FilledQuantity << " at $"
+                << static_cast<float>(fillResults.FillPrice) / 100.0;
             break;
 
         case OrderStatus::REJECTED:
-            if (!fillResults.IsNull())
-            {
-                oss << "Order " << fillResults.OrderId << " has been rejected for reason: "
-                    << fillResults.Message;
-            }
-            else
-                oss << "Order " << fillResults.OrderId << " has been rejected (no details).";
+            oss << "Order " << fillResults.OrderId << " has been rejected for reason: "
+                << fillResults.Message;
             break;
 
         case OrderStatus::ACCEPTED_AND_WAITING:
@@ -355,7 +340,7 @@ void OrderBookEngine::SetStatusMessage(FillResults &fillResults)
             break;
 
         default:
-            oss << "Order status " << fillResults.Status << " was returned for order " << fillResults.OrderId;
+            oss << "Order status code " << fillResults.Status << " was returned for order " << fillResults.OrderId;
             break;
     }
 

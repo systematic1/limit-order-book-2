@@ -13,6 +13,7 @@ struct FillResults
 {
 public:
     long OrderId;
+    OrderSide Side;
     int RequestedQuantity;
     int FilledQuantity;
     int RemainingQuantity;
@@ -23,12 +24,8 @@ public:
     OrderStatus Status;
 
     FillResults() = default;
-    FillResults(long orderId, int requestQty, int filledQty, int remainingQty, long fillPrice,
+    FillResults(long orderId, OrderSide side, int requestQty, int filledQty, int remainingQty, long fillPrice,
             long auxData, const std::string& message, OrderStatus status, long accountId);
-    bool IsNull() const;
 };
-
-const FillResults NullFillResults = FillResults(-1L, -1, -1, -1,
-    -1L, LONG_MIN, std::string(), OrderStatus::UNKNOWN, -1L);
 
 #endif //LIMITORDERBOOK2_FILLRESULTS_H

@@ -42,8 +42,3 @@ void Order::Clear()
     NextOlderOrderIndexAtLevel = -1;
     NextNewerOrderIndexAtLevel = -1;
 }
-
-bool Order::IsNull() const
-{
-    return OrderId < 0L && Price < 0L && TotalQuantity < 0L && AccountId == LONG_MIN;
-}

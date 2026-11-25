@@ -33,10 +33,6 @@ public:
         int remainingQuantity, int priceLevelIndex, long timestamp, TimeToLive timeToLive,
         long accountId, long securityId);
     void Clear();
-    bool IsNull() const;
 };
-
-const auto NullOrder = Order(-1L, -1L, OrderSide::BUY, OrderType::MARKET, -1, -1,
-    -1, -1L, TimeToLive::GTC, LONG_MIN, -1);
 
 #endif //LIMITORDERBOOK2_ORDER_H

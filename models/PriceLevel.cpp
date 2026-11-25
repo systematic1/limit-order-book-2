@@ -39,8 +39,3 @@ bool PriceLevel::IsEmpty() const
 {
     return QuantityAvailable == 0L;
 }
-
-bool PriceLevel::IsNull() const
-{
-    return Price < 0L && QuantityAvailable < 0L && OrderCount < 0L && LastFillQuantity == 0L && LastFillTimestamp == 0L;
-}
